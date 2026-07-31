@@ -1,0 +1,24 @@
+whats left:
+1.write function to check if label is legal, if its a saved word or if it already exists in mcrolist
+2.make sure that if there is an error, we free all allocated memory before exiting.
+3.make sure no output file is returned when there is an error
+4.if token is a label in mcrolist, append content to output file instead of it. ( also make sure no content after the lable)
+
+
+
+later:
+1.write legality function for checking undefiend lines (no mcro no lable for example "hello")
+2.write legality function for checking signs in illegal places ('"; etc)
+3.check if there is overlap between extern and entry labels
+
+
+
+questions:
+1.do we need a function to check empty lines?
+2.do we need a function to check comment lines?
+
+
+
+
+reserved words:
+.db .dw .dh .asciz .entry .extern
