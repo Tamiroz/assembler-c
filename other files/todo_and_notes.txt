@@ -10,6 +10,7 @@ later:
 1.write legality function for checking undefiend lines (no mcro no lable for example "hello")
 2.write legality function for checking signs in illegal places ('"; etc)
 3.check if there is overlap between extern and entry labels
+4.fix memory leaks and exits
 
 
 
@@ -22,3 +23,7 @@ questions:
 
 reserved words:
 .db .dw .dh .asciz .entry .extern
+
+
+note:
+i assumed a label and a mcro label as the same rules 

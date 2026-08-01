@@ -2,7 +2,9 @@ MAIN: add $3,$5,$9
 
 LOOP: ori $9,-5,$2
 
-GEN_MAC
+la val1
+jmp NEXT
+
 NEXT: move $20,$4
 bgt $4,$2,END
 la K

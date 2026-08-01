@@ -4,47 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAX_LINE_LENGTH 80
-#define MAX_LABEL_LENGTH 30
 
-typedef enum { TYPE_R, TYPE_I, TYPE_J } InstructionType;
-typedef enum {
-  OP_ADD,
-  OP_SUB,
-  OP_AND,
-  OP_OR,
-  OP_NOR,
-  OP_MOVE,
-  OP_MVHI,
-  OP_MVLO,
-  OP_ADDI,
-  OP_SUBI,
-  OP_ANDI,
-  OP_ORI,
-  OP_NORI,
-  OP_BNE,
-  OP_BEQ,
-  OP_BLT,
-  OP_BGT,
-  OP_LB,
-  OP_SB,
-  OP_LW,
-  OP_SW,
-  OP_LH,
-  OP_SH,
-  OP_JMP,
-  OP_LA,
-  OP_CALL,
-  OP_HLT,
-  OP_INVALID = -1
-} Opcode;
-typedef struct {
-  const char *name;
-  Opcode op;
-  InstructionType type;
-  int opcode_val;
-  int funct_val;
-} Instruction;
+#include "error_check.h"
 
 /* Define the static table containing all your action metadata */
 const Instruction instruction_table[] = {
@@ -79,20 +40,6 @@ const Instruction instruction_table[] = {
     {NULL, OP_INVALID, 0, 0, 0} /* Sentinel element to mark end of table */
 };
 
-typedef enum {
-  DIR_DB,
-  DIR_DW,
-  DIR_DH,
-  DIR_ASCIZ,
-  DIR_ENTRY,
-  DIR_EXTERN,
-  DIR_INVALID = -1
-} DirectiveType;
-/* Structure for directive metadata */
-typedef struct {
-  const char *name;   /* e.g. ".db" */
-  DirectiveType type; /* e.g. DIR_DB */
-} Directive;
 /* Directive table */
 const Directive directive_table[] = {
     {".db", DIR_DB},       {".dw", DIR_DW},       {".dh", DIR_DH},
@@ -129,14 +76,10 @@ int is_valid_label(const char *name) {
   if (len > MAX_LABEL_LENGTH)
     return 0;
   for (i = 1; i < len; i++)
-    if (!isalnum((unsigned char)name[i]))
+    if (!isalnum((unsigned char)name[i]) && name[i] != '_')
       return 0;
   return !is_reserved_word(name);
 }
-
-/*also needed to be written. go through label table and check. need to know how
- * labels are saved for this*/
-int is_repeated_label(const char *label, char *labels, int count) {}
 
 /*____________________first run checks___________________________________*/
 
