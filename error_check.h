@@ -6,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "globals.h"
+#define MAX_LINE_LENGTH 80
+#define MAX_LABEL_LENGTH 30
 
 typedef enum { TYPE_R, TYPE_I, TYPE_J } InstructionType;
 

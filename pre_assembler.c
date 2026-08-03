@@ -2,28 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pre_assembler.h"
 #include "error_check.h"
-
-int is_repeated_label(const char *label, Macro *m_list, int mcro_count) {
-  int i;
-  for (i = 0; i < mcro_count; i++) {
-    if (strcmp(m_list[i].label, label) == 0) {
-      return 1; /* 1 means label IS found in table */
-    }
-  }
-  return 0; /* 0 means NOT found */
-}
-
-int find_label(const char *label, Macro *m_list, int mcro_count) {
-  int i;
-  for (i = 0; i < mcro_count; i++) {
-    if (strcmp(m_list[i].label, label) == 0) {
-      return i;
-    }
-  }
-  return -1; /* -1 means NOT found */
-}
+#include "pre_assembler.h"
 
 void print_macro(Macro *m_list, int mcro_count) {
   int i;
@@ -144,6 +124,8 @@ int pre_assemble(char *file_name) {
       strcpy(work_line, line);
       token = strtok(work_line, " \t\n\r");
 
+      /*save macro content*/
+
       while (token == NULL || strcmp(token, "mcroend") != 0) {
         mcro_lines++;
         content = (char *)realloc(content, mcro_lines * LINE_SIZE);
@@ -170,7 +152,8 @@ int pre_assemble(char *file_name) {
       m_list[mcro_count - 1].content = content;
     }
     /* --------------- handle case: macro call expansion --------------- */
-    else if (token != NULL && (macro_idx = find_label(token, m_list, mcro_count)) != -1) {
+    else if (token != NULL &&
+             (macro_idx = find_label(token, m_list, mcro_count)) != -1) {
       fputs(m_list[macro_idx].content, wfp);
     }
     /* --------------- handle case: regular line --------------- */
@@ -178,7 +161,7 @@ int pre_assemble(char *file_name) {
       fputs(line, wfp);
     }
   }
-
+  /* free memory */
   fclose(rfp);
   fclose(wfp);
   print_macro(m_list, mcro_count);

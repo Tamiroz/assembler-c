@@ -1,11 +1,10 @@
-/* find errors and clean input*/
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "error_check.h"
+#include "pre_assembler.h"
 
 /* Define the static table containing all your action metadata */
 const Instruction instruction_table[] = {
@@ -40,7 +39,6 @@ const Instruction instruction_table[] = {
     {NULL, OP_INVALID, 0, 0, 0} /* Sentinel element to mark end of table */
 };
 
-/* Directive table */
 const Directive directive_table[] = {
     {".db", DIR_DB},       {".dw", DIR_DW},       {".dh", DIR_DH},
     {".asciz", DIR_ASCIZ}, {".entry", DIR_ENTRY}, {".extern", DIR_EXTERN},
@@ -76,11 +74,31 @@ int is_valid_label(const char *name) {
   if (len > MAX_LABEL_LENGTH)
     return 0;
   for (i = 1; i < len; i++)
-    if (!isalnum((unsigned char)name[i]) && name[i] != '_')
+    if (!isalnum((unsigned char)name[i]))
       return 0;
   return !is_reserved_word(name);
 }
 
+/*also needed to be written. go through label table and check. need to know how
+ * labels are saved for this*/
+int is_repeated_label(const char *label, Macro *m_list, int mcro_count) {
+  int i;
+  for (i = 0; i < mcro_count; i++) {
+    if (strcmp(m_list[i].label, label) == 0) {
+      return ERR;
+    }
+  }
+  return OK;
+}
+int find_label(const char *label, Macro *m_list, int mcro_count) {
+  int i;
+  for (i = 0; i < mcro_count; i++) {
+    if (strcmp(m_list[i].label, label) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
 /*____________________first run checks___________________________________*/
 
 /* valid opcode name */

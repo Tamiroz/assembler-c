@@ -1,9 +1,9 @@
 #ifndef PRE_ASSEMBLER_H
 #define PRE_ASSEMBLER_H
 
-#include "globals.h"
-
-#define LINE_SIZE MAX_LINE_LENGTH
+#define OK 1
+#define ERR 0
+#define LINE_SIZE 80
 #define LABEL 35
 
 typedef struct mcro {
