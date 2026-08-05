@@ -1,3 +1,11 @@
+overall steps for project:
+1.write a pre assembler
+2.write first assembler pass
+3.write second assembler pass
+4.write output converter
+5.write main function
+
+
 whats left:
 1.write function to check if label is legal, if its a saved word or if it already exists in mcrolist
 2.make sure that if there is an error, we free all allocated memory before exiting.
