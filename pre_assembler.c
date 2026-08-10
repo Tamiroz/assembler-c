@@ -2,24 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "error_check.h"
+#include "first_pass.h"
 #include "pre_assembler.h"
-
-void print_macro(Macro *m_list, int mcro_count) {
-  int i;
-  for (i = 0; i < mcro_count; i++) {
-    printf("%s: \n", m_list[i].label);
-    printf("%s\n", m_list[i].content);
-  }
-}
-
-int main(void) {
-  char file[] = "test.as";
-  int res = pre_assemble(file);
-  printf("Result code: %d\n", res);
-
-  return OK;
-}
 
 int pre_assemble(char *file_name) {
   FILE *rfp;
@@ -34,6 +18,7 @@ int pre_assemble(char *file_name) {
   char *m_label;
   Macro *m_list = NULL;
   int macro_idx;
+  int line_num = 0;
 
   /* Check if file name ends with .as */
   if ((file_name = strtok(file_name, ".")) == NULL) {
@@ -73,25 +58,25 @@ int pre_assemble(char *file_name) {
     if (token != NULL && strcmp(token, "mcro") == 0) {
       m_label = strtok(NULL, " \t\n\r");
       if (m_label == NULL) {
-        printf("error, no label for macro\n");
+        printf("error: line %d, no label for macro\n", line_num);
         fclose(rfp);
         fclose(wfp);
         return ERR;
       }
       if ((token = strtok(NULL, " \t\n\r")) != NULL) {
-        printf("error, excess content after mcro label\n");
+        printf("error: line %d, excess content after mcro label\n", line_num);
         fclose(rfp);
         fclose(wfp);
         return ERR;
       }
-      if (!is_valid_label(m_label)) {
-        printf("error, illegal macro label: %s\n", m_label);
+      if (!is_valid_macro_label(m_label)) {
+        printf("error: line %d, illegal macro label: %s\n", line_num, m_label);
         fclose(rfp);
         fclose(wfp);
         return ERR;
       }
-      if (is_repeated_label(m_label, m_list, mcro_count)) {
-        printf("error, repeated macro label: %s\n", m_label);
+      if (!is_free_macro_label(m_label, m_list, mcro_count)) {
+        printf("error: line %d, repeated macro label: %s\n", line_num, m_label);
         fclose(rfp);
         fclose(wfp);
         return ERR;
@@ -144,7 +129,7 @@ int pre_assemble(char *file_name) {
         token = strtok(work_line, " \t\n\r");
       }
       if (token != NULL && (token = strtok(NULL, " \t\n\r")) != NULL) {
-        printf("error, excess content after mcroend\n");
+        printf("error: line %d, excess content after mcroend\n", line_num);
         fclose(rfp);
         fclose(wfp);
         return ERR;
@@ -153,18 +138,51 @@ int pre_assemble(char *file_name) {
     }
     /* --------------- handle case: macro call expansion --------------- */
     else if (token != NULL &&
-             (macro_idx = find_label(token, m_list, mcro_count)) != -1) {
+             (macro_idx = find_macro_label(token, m_list, mcro_count)) != -1) {
       fputs(m_list[macro_idx].content, wfp);
     }
     /* --------------- handle case: regular line --------------- */
     else {
       fputs(line, wfp);
     }
+    line_num++;
   }
   /* free memory */
   fclose(rfp);
   fclose(wfp);
-  print_macro(m_list, mcro_count);
 
   return OK;
+}
+
+int is_free_macro_label(const char *label, Macro *m_list, int mcro_count) {
+  int i;
+  for (i = 0; i < mcro_count; i++) {
+    if (strcmp(m_list[i].label, label) == 0) {
+      return ERR;
+    }
+  }
+  return OK;
+}
+
+int find_macro_label(const char *label, Macro *m_list, int mcro_count) {
+  int i;
+  for (i = 0; i < mcro_count; i++) {
+    if (strcmp(m_list[i].label, label) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int is_valid_macro_label(const char *name) {
+  int i, len;
+  if (!name || !isalpha((unsigned char)name[0]))
+    return ERR;
+  len = (int)strlen(name);
+  if (len > MAX_LABEL_LENGTH)
+    return ERR;
+  for (i = 1; i < len; i++)
+    if (!isalnum((unsigned char)name[i]) && (unsigned char)name[i] != '_')
+      return ERR;
+  return !is_reserved_word(name);
 }

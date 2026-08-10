@@ -1,10 +1,63 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "error_check.h"
-#include "pre_assembler.h"
+typedef enum { TYPE_R, TYPE_I, TYPE_J } InstructionType;
+
+typedef enum {
+  OP_ADD,
+  OP_SUB,
+  OP_AND,
+  OP_OR,
+  OP_NOR,
+  OP_MOVE,
+  OP_MVHI,
+  OP_MVLO,
+  OP_ADDI,
+  OP_SUBI,
+  OP_ANDI,
+  OP_ORI,
+  OP_NORI,
+  OP_BNE,
+  OP_BEQ,
+  OP_BLT,
+  OP_BGT,
+  OP_LB,
+  OP_SB,
+  OP_LW,
+  OP_SW,
+  OP_LH,
+  OP_SH,
+  OP_JMP,
+  OP_LA,
+  OP_CALL,
+  OP_HLT,
+  OP_INVALID = -1
+} Opcode;
+
+typedef struct {
+  const char *name;
+  Opcode op;
+  InstructionType type;
+  int opcode_val;
+  int funct_val;
+} Instruction;
+
+typedef enum {
+  DIR_DB,
+  DIR_DW,
+  DIR_DH,
+  DIR_ASCIZ,
+  DIR_ENTRY,
+  DIR_EXTERN,
+  DIR_INVALID = -1
+} DirectiveType;
+
+typedef struct {
+  const char *name;   /* e.g. ".db" */
+  DirectiveType type; /* e.g. DIR_DB */
+} Directive;
+
+/* External table declarations */
+extern const Instruction instruction_table[];
+extern const Directive directive_table[];
 
 /* Define the static table containing all your action metadata */
 const Instruction instruction_table[] = {
@@ -79,26 +132,6 @@ int is_valid_label(const char *name) {
   return !is_reserved_word(name);
 }
 
-/*also needed to be written. go through label table and check. need to know how
- * labels are saved for this*/
-int is_repeated_label(const char *label, Macro *m_list, int mcro_count) {
-  int i;
-  for (i = 0; i < mcro_count; i++) {
-    if (strcmp(m_list[i].label, label) == 0) {
-      return ERR;
-    }
-  }
-  return OK;
-}
-int find_label(const char *label, Macro *m_list, int mcro_count) {
-  int i;
-  for (i = 0; i < mcro_count; i++) {
-    if (strcmp(m_list[i].label, label) == 0) {
-      return i;
-    }
-  }
-  return -1;
-}
 /*____________________first run checks___________________________________*/
 
 /* valid opcode name */

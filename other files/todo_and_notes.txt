@@ -16,15 +16,22 @@ whats left:
 
 later:
 1.write legality function for checking undefiend lines (no mcro no lable for example "hello")
-2.write legality function for checking signs in illegal places ('"; etc)
+2.write legality function for checking signs in illegal places ('"; etc) during encode R, I, J functions
 3.check if there is overlap between extern and entry labels
 4.fix memory leaks and exits
+5.change memory management in macros to linked list structure instead of dynamic arrays (in pre assembler)
+6.check if we did everything good, defining repeating values, creating variables in the beginning etc
+7.in every error add the line number
+8.dont stop after first run if there are errors, run second run and stop after it.
+9.make outputs uniform in style
 
 
 
 questions:
 1.do we need a function to check empty lines?
 2.do we need a function to check comment lines?
+3.does is_end in first run has to have hlt command? or can it just be END, if so might need to change function]
+
 
 
 
