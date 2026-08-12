@@ -26,10 +26,17 @@ int main(int argc, char *argv[]) {
     }
     if (first_pass(argv[i]) == ERR) {
       printf("first_pass failed for file %s\n", argv[i]);
+      if (second_pass(argv[i])==ERR)
+        printf("second_pass failed for file %s\n", argv[i]);
       continue;
     }
-    /*second_pass(argv[i]);
-    output_converter(argv[i]);*/
+    if(second_pass(argv[i])==ERR)
+    printf("second_pass failed for file %s\n", argv[i]);
+    continue;
+
+    if(output_converter(argv[i])==ERR)/*are there possible faliures for conversion proccess?*/
+    printf("output_converter failed for file %s\n", argv[i]);
+    continue;
   }
 
   return 0;
