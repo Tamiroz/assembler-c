@@ -18,11 +18,7 @@ typedef struct {
   unsigned char value;
 } DataEntry;
 
-typedef enum {
-  SYM_CODE = 0,
-  SYM_DATA = 1,
-  SYM_EXTERN = 2
-} SymbolType;
+typedef enum { SYM_CODE = 0, SYM_DATA = 1, SYM_EXTERN = 2 } SymbolType;
 
 typedef struct Symbol {
   char name[MAX_LABEL_LENGTH + 1];
