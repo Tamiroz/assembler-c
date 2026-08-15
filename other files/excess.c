@@ -160,3 +160,14 @@ int is_valid_register(const char *token, int *reg_num) {
     *reg_num = num;
   return 1;
 }
+
+int is_end(char *line) /*does is_end has to check if END has hlt command?*/
+{
+  int i = 0;
+  char word[MAX_LABEL_LENGTH + 1];
+
+  skip_spaces(line, &i);
+  get_next_word(line, &i, word);
+
+  return (strcmp(word, "END") == 0);
+}

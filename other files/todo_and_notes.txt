@@ -24,15 +24,18 @@ later:
 7.in every error add the line number
 8.dont stop after first run if there are errors, run second run and stop after it.
 9.make outputs uniform in style
-
+10.remember to replace numbers with defined values also in "complete"
 
 
 questions:
 1.do we need a function to check empty lines?
 2.do we need a function to check comment lines?
 3.does is_end in first run has to have hlt command? or can it just be END, if so might need to change function]
+4.what happens if there is excess words after entry/extern/end?
 
 
+notes:
+1.i have removed is_end function in first_pass.c
 
 
 

@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define OK 1
-#define ERR 0
+#define OK 0
+#define ERR 1
 #define LINE_SIZE 80
 #define LABEL 35
 #define MAX_LABEL_LENGTH 31

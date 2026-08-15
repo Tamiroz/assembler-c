@@ -66,6 +66,58 @@ DataEntry *data_image = NULL;
 int data_size = 0;
 int data_capacity = 0;
 Symbol *symbol_table = NULL;
+EntryNode *entry_list = NULL;
+
+/* functions for printing tables */
+
+void print_binary_32(unsigned int num) {
+  int i;
+  for (i = 31; i >= 0; i--) {
+    putchar((num & (1U << i)) ? '1' : '0');
+  }
+}
+
+void print_binary_8(unsigned char num) {
+  int i;
+  for (i = 7; i >= 0; i--) {
+    putchar((num & (1 << i)) ? '1' : '0');
+  }
+}
+
+void print_code_image(CodeEntry *code_image, int code_size) {
+  int i;
+
+  for (i = 0; i < code_size; i++) {
+    printf("%d | ", code_image[i].address);
+    print_binary_32(code_image[i].code);
+    printf(" | %d | %s\n", code_image[i].complete, code_image[i].symbol);
+  }
+}
+
+void print_data_image(DataEntry *data_image, int data_size) {
+  int i;
+  for (i = 0; i < data_size; i++) {
+    printf("%d | ", data_image[i].address);
+    print_binary_8(data_image[i].value);
+    printf("\n");
+  }
+}
+
+void print_symbol_table(Symbol *symbol_table) {
+  Symbol *cur = symbol_table;
+  while (cur) {
+    printf("%s | %d | %d\n", cur->name, cur->value, cur->type);
+    cur = cur->next;
+  }
+}
+
+void print_entry_list(EntryNode *entry_list) {
+  EntryNode *cur = entry_list;
+  while (cur) {
+    printf("%s | %d\n", cur->symbol, cur->line_number);
+    cur = cur->next;
+  }
+}
 
 /* ---- פונקציות עזר ---- */
 
@@ -119,6 +171,27 @@ Symbol *find_symbol(const char *name) {
   Symbol *cur = symbol_table;
   while (cur) {
     if (strcmp(cur->name, name) == 0)
+      return cur;
+    cur = cur->next;
+  }
+  return NULL;
+}
+
+/* ---- פונקציות לאנטרי ---- */
+
+void add_entry(const char *name, int line_number) {
+  EntryNode *ent = (EntryNode *)malloc(sizeof(EntryNode));
+  strncpy(ent->symbol, name, MAX_LABEL_LENGTH);
+  ent->symbol[MAX_LABEL_LENGTH] = '\0';
+  ent->line_number = line_number;
+  ent->next = entry_list;
+  entry_list = ent;
+}
+
+EntryNode *find_entry(const char *name) {
+  EntryNode *cur = entry_list;
+  while (cur) {
+    if (strcmp(cur->symbol, name) == 0)
       return cur;
     cur = cur->next;
   }
@@ -195,17 +268,6 @@ int is_empty_or_comment(char *line) {
   return (line[i] == '\0' || line[i] == '\n' || line[i] == ';');
 }
 
-int is_end(char *line) /*does is_end has to check if END has hlt command?*/
-{
-  int i = 0;
-  char word[MAX_LABEL_LENGTH + 1];
-
-  skip_spaces(line, &i);
-  get_next_word(line, &i, word);
-
-  return (strcmp(word, "END") == 0);
-}
-
 int is_instruction(char *line) {
   int i = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -249,6 +311,17 @@ int is_extern(char *line) {
   get_next_word(line, &i, word);
 
   return (strcmp(word, ".extern") == 0);
+}
+
+int is_entry(char *line) {
+  int i = 0;
+  char word[MAX_LABEL_LENGTH + 1];
+
+  skip_label(line, &i);
+  skip_spaces(line, &i);
+  get_next_word(line, &i, word);
+
+  return (strcmp(word, ".entry") == 0);
 }
 
 /* ---- קידוד הוראות ---- */
@@ -539,9 +612,6 @@ int first_pass(char *filename) {
     if (is_empty_or_comment(line))
       continue;
 
-    if (is_end(line))
-      break;
-
     if (is_label(line, label)) {
       if (find_symbol(label)) {
         printf("Error: line %d - label '%s' defined more than once\n",
@@ -573,12 +643,48 @@ int first_pass(char *filename) {
       skip_spaces(line, &i);
       get_next_word(line, &i, sym);
 
-      if (!find_symbol(sym))
-        add_symbol(sym, 0, 2);
+      if (sym[0] == '\0') {
+        printf("Error: line %d - missing label after .extern\n", line_number);
+        error_found = 1;
+      } else {
+        skip_spaces(line, &i);
+        if (line[i] != '\0' && line[i] != '\n') {
+          printf("Error: line %d - extraneous text after .extern directive\n",
+                 line_number);
+          error_found = 1;
+        } else if (!find_symbol(sym)) {
+          add_symbol(sym, 0, 2);
+        }
+      }
+    } else if (is_entry(line)) {
+      int i = 0;
+      char word[MAX_LABEL_LENGTH + 1];
+      char sym[MAX_LABEL_LENGTH + 1];
+
+      skip_label(line, &i);
+      skip_spaces(line, &i);
+      get_next_word(line, &i, word);
+      skip_spaces(line, &i);
+      get_next_word(line, &i, sym);
+
+      if (sym[0] == '\0') {
+        printf("Error: line %d - missing label after .entry\n", line_number);
+        error_found = 1;
+      } else {
+        skip_spaces(line, &i);
+        if (line[i] != '\0' && line[i] != '\n') {
+          printf("Error: line %d - extraneous text after .entry directive\n",
+                 line_number);
+          error_found = 1;
+        } else if (!find_entry(sym)) {
+          add_entry(sym, line_number);
+        }
+      }
     } else {
       printf("Error: line %d - unknown instruction\n", line_number);
       error_found = 1;
     }
+    printf("line %d - %s\n", line_number, line); /*need to remove*/
   }
 
   fclose(fp);
@@ -603,6 +709,14 @@ int first_pass(char *filename) {
     for (i = 0; i < data_size; i++)
       data_image[i].address += ICF;
   }
+  printf("------------------------------\n"); /*need to remove*/
+  print_code_image(code_image, code_size);
+  printf("------------------------------\n");
+  print_data_image(data_image, data_size);
+  printf("------------------------------\n");
+  print_symbol_table(symbol_table);
+  printf("------------------------------\n");
+  print_entry_list(entry_list);
 
   return 0;
 }

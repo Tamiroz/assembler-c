@@ -18,12 +18,24 @@ typedef struct {
   unsigned char value;
 } DataEntry;
 
+typedef enum {
+  SYM_CODE = 0,
+  SYM_DATA = 1,
+  SYM_EXTERN = 2
+} SymbolType;
+
 typedef struct Symbol {
   char name[MAX_LABEL_LENGTH + 1];
   int value;
-  int type; /* 0=code, 1=data, 2=external */
+  SymbolType type;
   struct Symbol *next;
 } Symbol;
+
+typedef struct EntryNode {
+  char symbol[MAX_LABEL_LENGTH + 1];
+  int line_number;
+  struct EntryNode *next;
+} EntryNode;
 
 /* ---- משתנים גלובליים — זמינים למעבר השני ---- */
 
@@ -34,6 +46,7 @@ extern int code_size;
 extern DataEntry *data_image;
 extern int data_size;
 extern Symbol *symbol_table;
+extern EntryNode *entry_list;
 
 /* ---- פונקציות ---- */
 
@@ -44,7 +57,6 @@ void trim_whitespace(char *line);
 void skip_label(char *line, int *i);
 int is_label(char *line, char *label);
 int is_empty_or_comment(char *line);
-int is_end(char *line);
 int is_instruction(char *line);
 int is_data_directive(char *line);
 int is_extern(char *line);

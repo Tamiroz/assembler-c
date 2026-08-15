@@ -158,10 +158,10 @@ int is_free_macro_label(const char *label, Macro *m_list, int mcro_count) {
   int i;
   for (i = 0; i < mcro_count; i++) {
     if (strcmp(m_list[i].label, label) == 0) {
-      return ERR;
+      return 0;
     }
   }
-  return OK;
+  return 1;
 }
 
 int find_macro_label(const char *label, Macro *m_list, int mcro_count) {
@@ -177,12 +177,12 @@ int find_macro_label(const char *label, Macro *m_list, int mcro_count) {
 int is_valid_macro_label(const char *name) {
   int i, len;
   if (!name || !isalpha((unsigned char)name[0]))
-    return ERR;
+    return 0;
   len = (int)strlen(name);
   if (len > MAX_LABEL_LENGTH)
-    return ERR;
+    return 0;
   for (i = 1; i < len; i++)
     if (!isalnum((unsigned char)name[i]) && (unsigned char)name[i] != '_')
-      return ERR;
+      return 0;
   return !is_reserved_word(name);
 }
