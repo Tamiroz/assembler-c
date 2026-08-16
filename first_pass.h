@@ -30,8 +30,15 @@ typedef struct Symbol {
 typedef struct EntryNode {
   char symbol[MAX_LABEL_LENGTH + 1];
   int line_number;
+  int address;
   struct EntryNode *next;
 } EntryNode;
+
+typedef struct ExternNode {
+  char symbol[MAX_LABEL_LENGTH + 1];
+  int address;
+  struct ExternNode *next;
+} ExternNode;
 
 /* ---- משתנים גלובליים — זמינים למעבר השני ---- */
 
@@ -43,6 +50,7 @@ extern DataEntry *data_image;
 extern int data_size;
 extern Symbol *symbol_table;
 extern EntryNode *entry_list;
+extern ExternNode *extern_list;
 
 /* ---- פונקציות ---- */
 
@@ -59,5 +67,10 @@ int is_extern(char *line);
 void add_symbol(const char *name, int value, int type);
 Symbol *find_symbol(const char *name);
 int first_pass(char *filename);
+void print_code_image(CodeEntry *code_image, int code_size);
+void print_data_image(DataEntry *data_image, int data_size);
+void print_symbol_table(Symbol *symbol_table);
+void print_entry_list(EntryNode *entry_list);
+void print_extern_list(ExternNode *extern_list);
 
 #endif

@@ -67,6 +67,7 @@ int data_size = 0;
 int data_capacity = 0;
 Symbol *symbol_table = NULL;
 EntryNode *entry_list = NULL;
+ExternNode *extern_list = NULL;
 
 /* functions for printing tables */
 
@@ -106,7 +107,9 @@ void print_data_image(DataEntry *data_image, int data_size) {
 void print_symbol_table(Symbol *symbol_table) {
   Symbol *cur = symbol_table;
   while (cur) {
-    printf("%s | %d | %d\n", cur->name, cur->value, cur->type);
+    printf("%s | %d | %d |", cur->name, cur->value, cur->type);
+    print_binary_32(cur->value);
+    printf("\n");
     cur = cur->next;
   }
 }
@@ -114,9 +117,26 @@ void print_symbol_table(Symbol *symbol_table) {
 void print_entry_list(EntryNode *entry_list) {
   EntryNode *cur = entry_list;
   while (cur) {
-    printf("%s | %d\n", cur->symbol, cur->line_number);
+    printf("%s | %d\n", cur->symbol, cur->address);
     cur = cur->next;
   }
+}
+
+void print_extern_list(ExternNode *extern_list) {
+  ExternNode *cur = extern_list;
+  while (cur) {
+    printf("%s | %d\n", cur->symbol, cur->address);
+    cur = cur->next;
+  }
+}
+
+void add_extern(const char *name, int address) {
+  ExternNode *ext = (ExternNode *)malloc(sizeof(ExternNode));
+  strncpy(ext->symbol, name, MAX_LABEL_LENGTH);
+  ext->symbol[MAX_LABEL_LENGTH] = '\0';
+  ext->address = address;
+  ext->next = extern_list;
+  extern_list = ext;
 }
 
 /* ---- פונקציות עזר ---- */
@@ -128,9 +148,23 @@ void skip_spaces(char *line, int *i) {
 
 void get_next_word(char *line, int *i, char *word) {
   int j = 0;
-  while (line[*i] != '\0' && line[*i] != ' ' && line[*i] != '\t')
+  while (line[*i] != '\0' && line[*i] != ' ' && line[*i] != '\t' &&
+         line[*i] != '\n' && line[*i] != '\r')
     word[j++] = line[(*i)++];
   word[j] = '\0';
+}
+
+void get_next_token(char *line, int *i, char *token) {
+  int j = 0;
+  skip_spaces(line, i);
+  if (line[*i] == ',') {
+    (*i)++;
+    skip_spaces(line, i);
+  }
+  while (line[*i] != '\0' && line[*i] != ' ' && line[*i] != '\t' &&
+         line[*i] != '\n' && line[*i] != '\r' && line[*i] != ',')
+    token[j++] = line[(*i)++];
+  token[j] = '\0';
 }
 
 void trim_whitespace(char *line) {
@@ -246,9 +280,22 @@ void skip_label(char *line, int *i) {
 int is_label(char *line, char *label) {
   int i = 0;
   char first_word[MAX_LABEL_LENGTH + 1];
+  int len;
 
   get_next_word(line, &i, first_word);
+  len = (int)strlen(first_word);
 
+  if (len > 0 && first_word[len - 1] == ':') {
+    first_word[len - 1] = '\0';
+    strcpy(label, first_word);
+    if (!isalpha((unsigned char)label[0])) {
+      label[0] = '\0';
+      return 0;
+    }
+    return 1;
+  }
+
+  skip_spaces(line, &i);
   if (line[i] == ':') {
     strcpy(label, first_word);
     if (!isalpha((unsigned char)label[0])) {
@@ -355,25 +402,16 @@ static unsigned int encode_r(char *line) {
   skip_spaces(line, &i);
 
   if (opcode == 1) {
-    get_next_word(line, &i, op1);
-    if (line[i] == ',')
-      i++;
-    skip_spaces(line, &i);
-    get_next_word(line, &i, op2);
+    get_next_token(line, &i, op1);
+    get_next_token(line, &i, op2);
 
     rd = get_register(op1);
     rs = get_register(op2);
     rt = 0;
   } else {
-    get_next_word(line, &i, op1);
-    if (line[i] == ',')
-      i++;
-    skip_spaces(line, &i);
-    get_next_word(line, &i, op2);
-    if (line[i] == ',')
-      i++;
-    skip_spaces(line, &i);
-    get_next_word(line, &i, op3);
+    get_next_token(line, &i, op1);
+    get_next_token(line, &i, op2);
+    get_next_token(line, &i, op3);
 
     rs = get_register(op1);
     rt = get_register(op2);
@@ -416,16 +454,9 @@ static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out) {
 
   is_branch = (opcode >= 15 && opcode <= 18);
 
-  skip_spaces(line, &i);
-  get_next_word(line, &i, op1);
-  if (line[i] == ',')
-    i++;
-  skip_spaces(line, &i);
-  get_next_word(line, &i, op2);
-  if (line[i] == ',')
-    i++;
-  skip_spaces(line, &i);
-  get_next_word(line, &i, op3);
+  get_next_token(line, &i, op1);
+  get_next_token(line, &i, op2);
+  get_next_token(line, &i, op3);
 
   if (is_branch) {
     rs = get_register(op1);
@@ -477,8 +508,7 @@ static unsigned int encode_j(char *line, int *complete, char *sym_out) {
     return code;
   }
 
-  skip_spaces(line, &i);
-  get_next_word(line, &i, op1);
+  get_next_token(line, &i, op1);
 
   if (op1[0] == '$') {
     reg = get_register(op1);
@@ -590,7 +620,7 @@ int first_pass(char *filename) {
   char line[MAX_LINE_LENGTH];
   char file_name[MAX_LINE_LENGTH];
   char label[MAX_LABEL_LENGTH + 1];
-  int IC = 0;
+  int IC = 100;
   int DC = 0;
   int line_number = 0;
   int error_found = 0;
