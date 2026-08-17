@@ -3,6 +3,7 @@
 
 #define MAX_LINE_LENGTH 82
 #define MAX_LABEL_LENGTH 31
+#define STARTING_ADDRESS 100
 
 /* ---- מבני נתונים — זמינים למעבר השני ---- */
 

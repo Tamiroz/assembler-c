@@ -620,7 +620,7 @@ int first_pass(char *filename) {
   char line[MAX_LINE_LENGTH];
   char file_name[MAX_LINE_LENGTH];
   char label[MAX_LABEL_LENGTH + 1];
-  int IC = 100;
+  int IC = STARTING_ADDRESS;
   int DC = 0;
   int line_number = 0;
   int error_found = 0;

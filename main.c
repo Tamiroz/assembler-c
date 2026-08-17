@@ -1,4 +1,5 @@
 #include "first_pass.h"
+#include "output_conversion.h"
 #include "pre_assembler.h"
 #include "second_pass.h"
 
@@ -40,11 +41,11 @@ int main(int argc, char *argv[]) {
     }
     printf("second_pass passed for file \"%s\"\n", argv[i]);
 
-    /*
-    if (output_converter(argv[i]) == ERR) { *are there possible faliures for
-    conversion proccess?* printf("output_converter failed for file %s\n",
-      argv[i]); continue;
-    }*/
+    if (output_conversion(argv[i]) == ERR) {
+      printf("output_conversion failed for file %s\n", argv[i]);
+      continue;
+    }
+    printf("output_conversion passed for file \"%s\"\n", argv[i]);
 
     /*free resources in each iterations, maybe nest stages*/
   }
