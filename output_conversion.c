@@ -1,10 +1,20 @@
+/**
+ * @file output_conversion.c
+ * @brief Implementation of target file generation (.ob, .ent, .ext).
+ */
+
 #include "output_conversion.h"
 #include "first_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/*print externs function */
+/**
+ * @brief Recursively prints external symbol occurrences in chronological order.
+ *
+ * @param extern_list Pointer to head of the ExternNode linked list.
+ * @param ext_file Pointer to open .ext output file handle.
+ */
 void print_externs(ExternNode *extern_list, FILE *ext_file) {
   if (extern_list == NULL)
     return;
@@ -13,7 +23,12 @@ void print_externs(ExternNode *extern_list, FILE *ext_file) {
   fprintf(ext_file, "%s %04d\n", extern_list->symbol, extern_list->address);
 }
 
-/*print entries function */
+/**
+ * @brief Iterates and prints entry symbols and their resolved addresses.
+ *
+ * @param entry_list Pointer to head of the EntryNode linked list.
+ * @param ent_file Pointer to open .ent output file handle.
+ */
 void print_entries(EntryNode *entry_list, FILE *ent_file) {
   while (entry_list != NULL) {
     fprintf(ent_file, "%s %04d\n", entry_list->symbol, entry_list->address);
@@ -21,13 +36,18 @@ void print_entries(EntryNode *entry_list, FILE *ent_file) {
   }
 }
 
-/* convert_to_object_file: convert code image to object file */
+/**
+ * @brief Formats and writes instruction and data images into the .ob object file.
+ *
+ * @param filename Name of the file being processed.
+ * @return int 0 on success, 1 on file creation error.
+ */
 int convert_to_object_file(char *filename) {
   FILE *ob_file;
   char file_name[MAX_LINE_LENGTH];
   int i;
   int j;
-  unsigned int *code_ptr;
+  unsigned char *code_ptr;
 
   filename = strtok(filename, ".");
   strcpy(file_name, filename);
@@ -40,17 +60,17 @@ int convert_to_object_file(char *filename) {
 
   fprintf(ob_file, "%6d %d\n", ICF - STARTING_ADDRESS, DCF);
   for (i = 0; i < code_size; i++) {
-    code_ptr = &(code_image[i].code);
+    code_ptr = (unsigned char *)&(code_image[i].code);
     fprintf(ob_file, "%d", code_image[i].address);
     for (j = 0; j < 4; j++) {
-      fprintf(ob_file, " %02x", (unsigned char)code_ptr[j]);
+      fprintf(ob_file, " %02X", (unsigned char)code_ptr[j]);
     }
     fprintf(ob_file, "\n");
   }
   for (i = 0; i < data_size; i++) {
     if (i % 4 == 0)
       fprintf(ob_file, "%d", data_image[i].address);
-    fprintf(ob_file, " %02x", (unsigned char)data_image[i].value);
+    fprintf(ob_file, " %02X", (unsigned char)data_image[i].value);
     if ((i + 1) % 4 == 0)
       fprintf(ob_file, "\n");
   }
@@ -62,6 +82,9 @@ int convert_to_object_file(char *filename) {
 int convert_to_entry_file(char *filename) {
   FILE *ent_file;
   char file_name[MAX_LINE_LENGTH];
+
+  if (entry_list == NULL)
+    return 0;
 
   filename = strtok(filename, ".");
   strcpy(file_name, filename);
@@ -82,6 +105,9 @@ int convert_to_extern_file(char *filename) {
   FILE *ext_file;
   char *temp;
   char file_name[MAX_LINE_LENGTH];
+
+  if (extern_list == NULL)
+    return 0;
 
   strcpy(file_name, filename);
   temp = strtok(file_name, ".");

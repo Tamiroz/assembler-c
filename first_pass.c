@@ -1,3 +1,11 @@
+/**
+ * @file first_pass.c
+ * @brief Implementation of Pass 1 of the 2-pass Assembler.
+ *
+ * Reads expanded assembly code (.am line by line), parses instruction opcodes and directives,
+ * constructs code_image and data_image, builds symbol_table, and computes final memory offsets.
+ */
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -714,7 +722,7 @@ int first_pass(char *filename) {
       printf("Error: line %d - unknown instruction\n", line_number);
       error_found = 1;
     }
-    printf("line %d - %s\n", line_number, line); /*need to remove*/
+    /* printf("line %d - %s\n", line_number, line); */
   }
 
   fclose(fp);
@@ -739,7 +747,8 @@ int first_pass(char *filename) {
     for (i = 0; i < data_size; i++)
       data_image[i].address += ICF;
   }
-  printf("------------------------------\n"); /*need to remove*/
+  /*
+  printf("------------------------------\n");
   print_code_image(code_image, code_size);
   printf("------------------------------\n");
   print_data_image(data_image, data_size);
@@ -747,6 +756,41 @@ int first_pass(char *filename) {
   print_symbol_table(symbol_table);
   printf("------------------------------\n");
   print_entry_list(entry_list);
+  */
 
   return 0;
+}
+
+void free_assembler_memory(void) {
+  if (code_image) {
+    free(code_image);
+    code_image = NULL;
+  }
+  code_size = 0;
+  code_capacity = 0;
+
+  if (data_image) {
+    free(data_image);
+    data_image = NULL;
+  }
+  data_size = 0;
+  data_capacity = 0;
+
+  while (symbol_table) {
+    Symbol *temp = symbol_table;
+    symbol_table = symbol_table->next;
+    free(temp);
+  }
+
+  while (entry_list) {
+    EntryNode *temp = entry_list;
+    entry_list = entry_list->next;
+    free(temp);
+  }
+
+  while (extern_list) {
+    ExternNode *temp = extern_list;
+    extern_list = extern_list->next;
+    free(temp);
+  }
 }

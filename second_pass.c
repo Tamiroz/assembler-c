@@ -1,14 +1,24 @@
+/**
+ * @file second_pass.c
+ * @brief Implementation of the second pass of assembly processing.
+ *
+ * Scans code_image to complete binary encoding by looking up missing operand symbols
+ * in symbol_table. Validates all .entry label definitions and records external symbol usages.
+ */
+
 #include "second_pass.h"
 #include "first_pass.h"
 #include <stdio.h>
 
-/*this file will handle second pass
--run through the code image and entry list and fill
-in the values of the labels*/
-
-/* prototype for helper defined in first_pass.c */
+/* Prototype for helper defined in first_pass.c */
 void add_extern(const char *name, int address);
 
+/**
+ * @brief Performs pass 2 resolution over code_image and entry_list.
+ *
+ * @param filename Name of the assembly file.
+ * @return int 0 on successful pass 2 execution, 1 on error.
+ */
 int second_pass(const char *filename) {
   int i;
   Symbol *sym_found;
@@ -48,7 +58,8 @@ int second_pass(const char *filename) {
     ent_found = ent_found->next;
   }
 
-  printf("------------------------------\n"); /*need to remove*/
+  /*
+  printf("------------------------------\n");
   print_code_image(code_image, code_size);
   printf("------------------------------\n");
   print_data_image(data_image, data_size);
@@ -58,6 +69,7 @@ int second_pass(const char *filename) {
   print_entry_list(entry_list);
   printf("------------------------------\n");
   print_extern_list(extern_list);
+  */
 
   return 0;
 }

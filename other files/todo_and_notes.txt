@@ -1,30 +1,11 @@
-overall steps for project:
-1.write a pre assembler
-2.write first assembler pass
-3.write second assembler pass
-4.write output converter
-5.write main function
-
-
-whats left:
-1.write function to check if label is legal, if its a saved word or if it already exists in mcrolist
-2.make sure that if there is an error, we free all allocated memory before exiting.
-3.make sure no output file is returned when there is an error
-4.if token is a label in mcrolist, append content to output file instead of it. ( also make sure no content after the lable)
-
 
 
 later:
-1.write legality function for checking undefiend lines (no mcro no lable for example "hello")
-2.write legality function for checking signs in illegal places ('"; etc) during encode R, I, J functions
-3.check if there is overlap between extern and entry labels
-4.fix memory leaks and exits
-5.change memory management in macros to linked list structure instead of dynamic arrays (in pre assembler)
-6.check if we did everything good, defining repeating values, creating variables in the beginning etc
-7.in every error add the line number
-8.dont stop after first run if there are errors, run second run and stop after it.
-9.make outputs uniform in style
-10.remember to replace numbers with defined values also in "complete"
+1.check if there is overlap between extern and entry labels
+2.fix memory leaks and exits
+3.check if we did everything good, defining repeating values, creating variables in the beginning etc
+4.make outputs uniform in style
+5.remember to replace numbers with defined values also in "complete"
 
 
 questions:
@@ -32,16 +13,10 @@ questions:
 2.do we need a function to check comment lines?
 3.does is_end in first run has to have hlt command? or can it just be END, if so might need to change function]
 4.what happens if there is excess words after entry/extern/end?
+5.is it legal to decalre variables mid code?
 
 
 notes:
 1.i have removed is_end function in first_pass.c
 
 
-
-reserved words:
-.db .dw .dh .asciz .entry .extern
-
-
-note:
-i assumed a label and a mcro label as the same rules 
