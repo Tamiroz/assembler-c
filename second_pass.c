@@ -1,29 +1,32 @@
 /**
  * @file second_pass.c
- * @brief Implementation of the second pass of assembly processing.
+ * @brief second pass implementation
  *
- * Scans code_image to complete binary encoding by looking up missing operand symbols
- * in symbol_table. Validates all .entry label definitions and records external symbol usages.
+ * scans code image array, looks up missing labels in symbol table and completes machine code words
  */
 
 #include "second_pass.h"
 #include "first_pass.h"
 #include <stdio.h>
 
-/* Prototype for helper defined in first_pass.c */
+/* ---- Helper Prototype Declarations ---- */
+
 void add_extern(const char *name, int address);
 
+/* ---- Second Pass Resolution Engine ---- */
+
 /**
- * @brief Performs pass 2 resolution over code_image and entry_list.
+ * @brief run second pass over code image and entry list
  *
- * @param filename Name of the assembly file.
- * @return int 0 on successful pass 2 execution, 1 on error.
+ * @param filename name of assembly file
+ * @return int 0 if pass ok, 1 if error
  */
 int second_pass(const char *filename) {
   int i;
   Symbol *sym_found;
   EntryNode *ent_found = entry_list;
 
+  /* -------- Step 1: fill missing symbol addresses in code image -------- */
   for (i = 0; i < code_size; i++) {
     if (code_image[i].complete == 0) {
       sym_found = find_symbol(code_image[i].symbol);
@@ -33,15 +36,18 @@ int second_pass(const char *filename) {
         return 1;
       }
 
+      /* check if symbol is extern, add to extern list */
       if (sym_found->type == SYM_EXTERN) {
         add_extern(sym_found->name, code_image[i].address);
       }
 
+      /* add symbol value to instruction code word */
       code_image[i].code = code_image[i].code | sym_found->value;
       code_image[i].complete = 1;
     }
   }
 
+  /* -------- Step 2: check entry labels are defined and get their addresses -------- */
   while (ent_found != NULL) {
     sym_found = find_symbol(ent_found->symbol);
     if (sym_found == NULL) {
@@ -57,19 +63,6 @@ int second_pass(const char *filename) {
     ent_found->address = sym_found->value;
     ent_found = ent_found->next;
   }
-
-  /*
-  printf("------------------------------\n");
-  print_code_image(code_image, code_size);
-  printf("------------------------------\n");
-  print_data_image(data_image, data_size);
-  printf("------------------------------\n");
-  print_symbol_table(symbol_table);
-  printf("------------------------------\n");
-  print_entry_list(entry_list);
-  printf("------------------------------\n");
-  print_extern_list(extern_list);
-  */
 
   return 0;
 }

@@ -1,19 +1,18 @@
 /**
  * @file second_pass.h
- * @brief Header file for the second pass of the assembler.
+ * @brief header file for second pass of assembler
  */
 
 #ifndef SECOND_PASS_H
 #define SECOND_PASS_H
 
+/* ---- Second Pass Main Pipeline ---- */
+
 /**
- * @brief Executes the second pass of assembly processing.
+ * @brief runs second pass to complete label addresses in code image and check entry/extern
  *
- * Resolves missing label addresses in code_image instructions using symbol_table,
- * validates entry directives in entry_list, and tracks external symbol references.
- *
- * @param filename Name of the file being processed.
- * @return int 0 on success, 1 on error (undefined labels or conflicting declarations).
+ * @param filename name of assembly file
+ * @return int 0 if pass ok, 1 if error found
  */
 int second_pass(const char *filename);
 

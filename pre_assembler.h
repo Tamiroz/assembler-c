@@ -1,6 +1,6 @@
 /**
  * @file pre_assembler.h
- * @brief Header file for macro pre-processing phase of the assembler.
+ * @brief header file for macro expansion phase
  */
 
 #ifndef PRE_ASSEMBLER_H
@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* ---- Constants & Macro Data Structures ---- */
+
 #define OK 0
 #define ERR 1
 #define LINE_SIZE 80
@@ -19,64 +21,68 @@
 
 /**
  * @struct mcro
- * @brief Represents a macro definition containing its name and expanded body.
+ * @brief macro struct keeping macro label name and content body text
  */
 typedef struct mcro {
-  char label[LABEL];  /**< Macro label/name */
-  char *content;      /**< Dynamically allocated body text of the macro */
+  char label[LABEL];  /**< macro label name */
+  char *content;      /**< allocated text body of macro */
 } Macro;
 
-/* ---- Pre-assembler prototypes ---- */
+/* ---- Main Pre-Assembler Pipeline ---- */
 
 /**
- * @brief Pre-assembles an input file by expanding all macro definitions.
+ * @brief pre assemble input file by expanding all macro definitions
  *
- * @param file_name Name of the input file (e.g., "filename.as").
- * @return int OK (0) on successful expansion, ERR (1) on syntax error or I/O failure.
+ * @param file_name name of input file (like "file.as")
+ * @return int OK (0) if pass ok, ERR (1) if error found
  */
 int pre_assemble(char *file_name);
 
-/**
- * @brief Prints all loaded macro labels and contents to stdout for debugging.
- *
- * @param m_list Array of stored Macro structures.
- * @param mcro_count Total number of stored macros.
- */
-void print_macro(Macro *m_list, int mcro_count);
+/* ---- Macro Validation & Lookup Helpers ---- */
 
 /**
- * @brief Checks whether a candidate macro label has not been defined previously.
+ * @brief check if macro label is not used before in macro list
  *
- * @param label The macro name to check.
- * @param m_list Array of existing Macro structures.
- * @param mcro_count Number of existing macros.
- * @return int 1 if label is unique/free, 0 if it already exists.
+ * @param label macro name to check
+ * @param m_list list of saved macros
+ * @param mcro_count number of macros saved
+ * @return int 1 if label free, 0 if already exists
  */
 int is_free_macro_label(const char *label, Macro *m_list, int mcro_count);
 
 /**
- * @brief Searches for a macro by name in the loaded macro list.
+ * @brief search for macro by name in macro list
  *
- * @param label Name of the macro to locate.
- * @param m_list Array of existing Macro structures.
- * @param mcro_count Number of existing macros.
- * @return int Index in m_list if found, -1 if not found.
+ * @param label macro name to locate
+ * @param m_list list of saved macros
+ * @param mcro_count number of macros saved
+ * @return int index in m_list if found, -1 if not found
  */
 int find_macro_label(const char *label, Macro *m_list, int mcro_count);
 
 /**
- * @brief Validates whether a proposed macro name is a legal identifier.
+ * @brief check if macro name is legal identifier
  *
- * @param name The macro label candidate.
- * @return int 1 if valid, 0 if invalid (e.g. reserved word or illegal characters).
+ * @param name candidate macro label
+ * @return int 1 if valid, 0 if invalid (like reserved word or bad chars)
  */
 int is_valid_macro_label(const char *name);
 
 /**
- * @brief Frees all dynamically allocated memory associated with the macro list.
+ * @brief print loaded macros to stdout for debugging
  *
- * @param m_list Array of Macro structures.
- * @param mcro_count Number of macros in the array.
+ * @param m_list list of saved macros
+ * @param mcro_count total count of macros
+ */
+void print_macro(Macro *m_list, int mcro_count);
+
+/* ---- Memory Cleanup ---- */
+
+/**
+ * @brief free all allocated memory of macro list
+ *
+ * @param m_list list of Macro structures
+ * @param mcro_count number of macros in list
  */
 void free_memory_pre_assembler(Macro *m_list, int mcro_count);
 

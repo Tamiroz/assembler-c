@@ -2,8 +2,9 @@
  * @file first_pass.c
  * @brief Implementation of Pass 1 of the 2-pass Assembler.
  *
- * Reads expanded assembly code (.am line by line), parses instruction opcodes and directives,
- * constructs code_image and data_image, builds symbol_table, and computes final memory offsets.
+ * Reads expanded assembly code (.am line by line), parses instruction opcodes
+ * and directives, constructs code_image and data_image, builds symbol_table,
+ * and computes final memory offsets.
  */
 
 #include <ctype.h>
@@ -13,7 +14,7 @@
 
 #include "first_pass.h"
 
-/* ---- מילים שמורות ---- */
+/* ---- Reserved Keywords & Opcode Lookup Tables ---- */
 
 static const char *reserved_words[] = {
     "add",  "sub",  "and",    "or",     "nor",     "move", "mvhi",
@@ -22,6 +23,11 @@ static const char *reserved_words[] = {
     "lh",   "sh",   "jmp",    "la",     "call",    "hlt",  ".db",
     ".dh",  ".dw",  ".asciz", ".entry", ".extern", NULL};
 
+/**
+ * @brief Checks if a word is a reserved assembly instruction opcode or directive.
+ * @param word The candidate string to evaluate.
+ * @return int 1 if reserved word, 0 otherwise.
+ */
 int is_reserved_word(const char *word) {
   int i = 0;
   while (reserved_words[i] != NULL) {
@@ -31,8 +37,6 @@ int is_reserved_word(const char *word) {
   }
   return 0;
 }
-
-/* ---- טבלאות הוראות ---- */
 
 typedef struct {
   char name[10];
@@ -63,7 +67,7 @@ static const IInstruction i_instructions[] = {
 static const JInstruction j_instructions[] = {
     {"jmp", 30}, {"la", 31}, {"call", 32}, {"hlt", 63}, {"", 0}};
 
-/* ---- משתנים גלובליים ---- */
+/* ---- Global Assembler Memory State ---- */
 
 int ICF = 0;
 int DCF = 0;
@@ -77,67 +81,13 @@ Symbol *symbol_table = NULL;
 EntryNode *entry_list = NULL;
 ExternNode *extern_list = NULL;
 
-/* functions for printing tables */
+/* ---- Extern List Operations ---- */
 
-void print_binary_32(unsigned int num) {
-  int i;
-  for (i = 31; i >= 0; i--) {
-    putchar((num & (1U << i)) ? '1' : '0');
-  }
-}
-
-void print_binary_8(unsigned char num) {
-  int i;
-  for (i = 7; i >= 0; i--) {
-    putchar((num & (1 << i)) ? '1' : '0');
-  }
-}
-
-void print_code_image(CodeEntry *code_image, int code_size) {
-  int i;
-
-  for (i = 0; i < code_size; i++) {
-    printf("%d | ", code_image[i].address);
-    print_binary_32(code_image[i].code);
-    printf(" | %d | %s\n", code_image[i].complete, code_image[i].symbol);
-  }
-}
-
-void print_data_image(DataEntry *data_image, int data_size) {
-  int i;
-  for (i = 0; i < data_size; i++) {
-    printf("%d | ", data_image[i].address);
-    print_binary_8(data_image[i].value);
-    printf("\n");
-  }
-}
-
-void print_symbol_table(Symbol *symbol_table) {
-  Symbol *cur = symbol_table;
-  while (cur) {
-    printf("%s | %d | %d |", cur->name, cur->value, cur->type);
-    print_binary_32(cur->value);
-    printf("\n");
-    cur = cur->next;
-  }
-}
-
-void print_entry_list(EntryNode *entry_list) {
-  EntryNode *cur = entry_list;
-  while (cur) {
-    printf("%s | %d\n", cur->symbol, cur->address);
-    cur = cur->next;
-  }
-}
-
-void print_extern_list(ExternNode *extern_list) {
-  ExternNode *cur = extern_list;
-  while (cur) {
-    printf("%s | %d\n", cur->symbol, cur->address);
-    cur = cur->next;
-  }
-}
-
+/**
+ * @brief Adds a new external reference node to extern_list.
+ * @param name External label name.
+ * @param address Address of instruction referencing external symbol.
+ */
 void add_extern(const char *name, int address) {
   ExternNode *ext = (ExternNode *)malloc(sizeof(ExternNode));
   strncpy(ext->symbol, name, MAX_LABEL_LENGTH);
@@ -147,13 +97,24 @@ void add_extern(const char *name, int address) {
   extern_list = ext;
 }
 
-/* ---- פונקציות עזר ---- */
+/* ---- String & Token Parsing Helpers ---- */
 
+/**
+ * @brief Advances string index past leading spaces and tabs.
+ * @param line Input line buffer.
+ * @param i Pointer to current index in line.
+ */
 void skip_spaces(char *line, int *i) {
   while (line[*i] == ' ' || line[*i] == '\t')
     (*i)++;
 }
 
+/**
+ * @brief Extracts the next space/tab-delimited word token from line.
+ * @param line Input line buffer.
+ * @param i Pointer to current index in line.
+ * @param word Buffer to store extracted word token.
+ */
 void get_next_word(char *line, int *i, char *word) {
   int j = 0;
   while (line[*i] != '\0' && line[*i] != ' ' && line[*i] != '\t' &&
@@ -162,6 +123,12 @@ void get_next_word(char *line, int *i, char *word) {
   word[j] = '\0';
 }
 
+/**
+ * @brief Extracts the next operand token handling optional comma delimiters.
+ * @param line Input line buffer.
+ * @param i Pointer to current index in line.
+ * @param token Buffer to store extracted token.
+ */
 void get_next_token(char *line, int *i, char *token) {
   int j = 0;
   skip_spaces(line, i);
@@ -175,6 +142,10 @@ void get_next_token(char *line, int *i, char *token) {
   token[j] = '\0';
 }
 
+/**
+ * @brief Trims leading and trailing whitespace characters in place.
+ * @param line Input line buffer.
+ */
 void trim_whitespace(char *line) {
   int start = 0;
   int end;
@@ -197,8 +168,14 @@ void trim_whitespace(char *line) {
   line[end + 1] = '\0';
 }
 
-/* ---- פונקציות טבלת סמלים ---- */
+/* ---- Symbol Table Operations ---- */
 
+/**
+ * @brief Allocates and prepends a new symbol node to symbol_table.
+ * @param name Symbol label string.
+ * @param value Address or offset value.
+ * @param type Category (SYM_CODE, SYM_DATA, SYM_EXTERN).
+ */
 void add_symbol(const char *name, int value, int type) {
   Symbol *sym = (Symbol *)malloc(sizeof(Symbol));
   strncpy(sym->name, name, MAX_LABEL_LENGTH);
@@ -209,6 +186,11 @@ void add_symbol(const char *name, int value, int type) {
   symbol_table = sym;
 }
 
+/**
+ * @brief Searches symbol_table for an existing symbol node by name.
+ * @param name Symbol name to find.
+ * @return Symbol* Pointer to node if found, NULL otherwise.
+ */
 Symbol *find_symbol(const char *name) {
   Symbol *cur = symbol_table;
   while (cur) {
@@ -219,8 +201,13 @@ Symbol *find_symbol(const char *name) {
   return NULL;
 }
 
-/* ---- פונקציות לאנטרי ---- */
+/* ---- Entry List Operations ---- */
 
+/**
+ * @brief Allocates and prepends a new entry node to entry_list.
+ * @param name Entry label identifier.
+ * @param line_number Line number where declared.
+ */
 void add_entry(const char *name, int line_number) {
   EntryNode *ent = (EntryNode *)malloc(sizeof(EntryNode));
   strncpy(ent->symbol, name, MAX_LABEL_LENGTH);
@@ -230,6 +217,11 @@ void add_entry(const char *name, int line_number) {
   entry_list = ent;
 }
 
+/**
+ * @brief Searches entry_list for an existing entry node by symbol name.
+ * @param name Entry label to find.
+ * @return EntryNode* Pointer to node if found, NULL otherwise.
+ */
 EntryNode *find_entry(const char *name) {
   EntryNode *cur = entry_list;
   while (cur) {
@@ -240,8 +232,15 @@ EntryNode *find_entry(const char *name) {
   return NULL;
 }
 
-/* ---- פונקציות תמונת קוד ---- */
+/* ---- Code & Data Image Memory Management ---- */
 
+/**
+ * @brief Appends an encoded instruction word to the dynamic code_image array.
+ * @param address Instruction memory address.
+ * @param code 32-bit encoded instruction word.
+ * @param complete 1 if instruction encoding is full, 0 if label resolution needed in Pass 2.
+ * @param symbol Missing operand label string if complete == 0.
+ */
 void add_to_code_image(int address, unsigned int code, int complete,
                        const char *symbol) {
   if (code_size >= code_capacity) {
@@ -259,8 +258,11 @@ void add_to_code_image(int address, unsigned int code, int complete,
   code_size++;
 }
 
-/* ---- פונקציות תמונת נתונים ---- */
-
+/**
+ * @brief Appends a data byte to the dynamic data_image array.
+ * @param address Data memory address.
+ * @param value Byte value to store.
+ */
 void add_to_data_image(int address, unsigned char value) {
   if (data_size >= data_capacity) {
     data_capacity = data_capacity == 0 ? 100 : data_capacity * 2;
@@ -272,19 +274,45 @@ void add_to_data_image(int address, unsigned char value) {
   data_size++;
 }
 
-/* ---- פונקציות זיהוי ---- */
+/* ---- Line Classification & Syntax Identification ---- */
 
+/**
+ * @brief Advances index past label declaration prefix if present.
+ * @param line Input line buffer.
+ * @param i Pointer to current index in line.
+ */
 void skip_label(char *line, int *i) {
   int j = 0;
-  while (line[j] != '\0' && line[j] != ':' && line[j] != ' ' && line[j] != '\t')
-    j++;
+  char first_word[MAX_LABEL_LENGTH + 1];
 
-  if (line[j] == ':')
+  skip_spaces(line, &j);
+  get_next_word(line, &j, first_word);
+
+  if (first_word[0] != '\0' && first_word[strlen(first_word) - 1] == ':') {
+    *i = j;
+    return;
+  }
+
+  skip_spaces(line, &j);
+  if (line[j] == ':') {
     *i = j + 1;
-  else
-    *i = 0;
+    return;
+  }
+
+  if (strcmp(first_word, "END") == 0) {
+    *i = j;
+    return;
+  }
+
+  *i = 0;
 }
 
+/**
+ * @brief Determines whether line contains a valid label definition.
+ * @param line Input line buffer.
+ * @param label Buffer to store extracted label name.
+ * @return int 1 if label definition found, 0 otherwise.
+ */
 int is_label(char *line, char *label) {
   int i = 0;
   char first_word[MAX_LABEL_LENGTH + 1];
@@ -313,16 +341,41 @@ int is_label(char *line, char *label) {
     return 1;
   }
 
+  if (strcmp(first_word, "END") == 0) {
+    strcpy(label, "END");
+    return 1;
+  }
+
   label[0] = '\0';
   return 0;
 }
 
+int is_end(char *line) {
+  int i = 0;
+  char word[MAX_LABEL_LENGTH + 1];
+
+  skip_spaces(line, &i);
+  get_next_word(line, &i, word);
+
+  return (strcmp(word, "END") == 0);
+}
+
+/**
+ * @brief Checks if a line is blank or contains a comment starting with ';'.
+ * @param line Input line buffer.
+ * @return int 1 if empty or comment, 0 otherwise.
+ */
 int is_empty_or_comment(char *line) {
   int i = 0;
   skip_spaces(line, &i);
   return (line[i] == '\0' || line[i] == '\n' || line[i] == ';');
 }
 
+/**
+ * @brief Checks if a line contains an instruction opcode statement.
+ * @param line Input line buffer.
+ * @return int 1 if instruction statement, 0 otherwise.
+ */
 int is_instruction(char *line) {
   int i = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -337,6 +390,11 @@ int is_instruction(char *line) {
   return is_reserved_word(word);
 }
 
+/**
+ * @brief Checks if a line contains a data directive (.db, .dh, .dw, .asciz).
+ * @param line Input line buffer.
+ * @return int 1 if data directive, 0 otherwise.
+ */
 int is_data_directive(char *line) {
   int i = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -357,6 +415,11 @@ int is_data_directive(char *line) {
   return 0;
 }
 
+/**
+ * @brief Checks if a line contains an .extern directive.
+ * @param line Input line buffer.
+ * @return int 1 if .extern directive, 0 otherwise.
+ */
 int is_extern(char *line) {
   int i = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -368,6 +431,11 @@ int is_extern(char *line) {
   return (strcmp(word, ".extern") == 0);
 }
 
+/**
+ * @brief Checks if a line contains an .entry directive.
+ * @param line Input line buffer.
+ * @return int 1 if .entry directive, 0 otherwise.
+ */
 int is_entry(char *line) {
   int i = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -379,14 +447,24 @@ int is_entry(char *line) {
   return (strcmp(word, ".entry") == 0);
 }
 
-/* ---- קידוד הוראות ---- */
+/* ---- Binary Instruction & Data Encoding ---- */
 
+/**
+ * @brief Extracts numerical register index from a '$' prefixed token.
+ * @param token Register token string (e.g. "$5").
+ * @return int Register number (0-31), or -1 if malformed.
+ */
 static int get_register(const char *token) {
   if (token[0] != '$')
     return -1;
   return atoi(token + 1);
 }
 
+/**
+ * @brief Encodes an R-type instruction word.
+ * @param line Input instruction line buffer.
+ * @return unsigned int 32-bit encoded R-type machine word.
+ */
 static unsigned int encode_r(char *line) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -435,6 +513,14 @@ static unsigned int encode_r(char *line) {
   return code;
 }
 
+/**
+ * @brief Encodes an I-type instruction word.
+ * @param line Input instruction line buffer.
+ * @param IC Current instruction counter address.
+ * @param complete Output flag (1 if resolved, 0 if label operand needs Pass 2).
+ * @param sym_out Output buffer for missing operand symbol name if complete == 0.
+ * @return unsigned int 32-bit encoded I-type machine word.
+ */
 static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -489,6 +575,13 @@ static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out) {
   return code;
 }
 
+/**
+ * @brief Encodes a J-type instruction word.
+ * @param line Input instruction line buffer.
+ * @param complete Output flag (1 if resolved, 0 if label operand needs Pass 2).
+ * @param sym_out Output buffer for missing operand symbol name if complete == 0.
+ * @return unsigned int 32-bit encoded J-type machine word.
+ */
 static unsigned int encode_j(char *line, int *complete, char *sym_out) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
@@ -533,6 +626,14 @@ static unsigned int encode_j(char *line, int *complete, char *sym_out) {
   return code;
 }
 
+/**
+ * @brief Encodes an instruction statement (R, I, or J type).
+ * @param line Input line buffer.
+ * @param IC Current instruction counter address.
+ * @param complete Output flag set to 1 if fully encoded, 0 if target symbol pending.
+ * @param sym_out Output buffer to store target symbol name if complete == 0.
+ * @return unsigned int 32-bit encoded machine code word.
+ */
 static unsigned int encode_instruction(char *line, int IC, int *complete,
                                        char *sym_out) {
   int i = 0, j = 0;
@@ -562,8 +663,11 @@ static unsigned int encode_instruction(char *line, int IC, int *complete,
   return 0;
 }
 
-/* ---- קידוד נתונים ---- */
-
+/**
+ * @brief Encodes data directive arguments (.db, .dh, .dw, .asciz) into data_image.
+ * @param line Input line buffer.
+ * @param DC Pointer to current data counter address.
+ */
 static void encode_data(char *line, int *DC) {
   int i = 0;
   char directive[MAX_LABEL_LENGTH + 1];
@@ -621,8 +725,14 @@ static void encode_data(char *line, int *DC) {
   }
 }
 
-/* ---- הפונקציה הראשית ---- */
+/* ---- Pass 1 Main Pipeline ---- */
 
+/**
+ * @brief Executes Pass 1 over an expanded assembly source file (.am).
+ *
+ * @param filename Name of the source file.
+ * @return int 0 on success, 1 on error.
+ */
 int first_pass(char *filename) {
   FILE *fp;
   char line[MAX_LINE_LENGTH];
@@ -633,6 +743,7 @@ int first_pass(char *filename) {
   int line_number = 0;
   int error_found = 0;
 
+  /* -------- Step 1: Open Expanded Assembly File (.am) -------- */
   filename = strtok(filename, ".");
   strcpy(file_name, filename);
   strcat(file_name, ".am");
@@ -642,25 +753,34 @@ int first_pass(char *filename) {
     return 1;
   }
 
+  /* -------- Step 2: Line-by-Line Parsing & Symbol Collection -------- */
   while (fgets(line, MAX_LINE_LENGTH, fp)) {
     line_number++;
-
     trim_whitespace(line);
 
     if (is_empty_or_comment(line))
       continue;
 
+    /* Step 2.1: Label Declaration Detection & Validation */
     if (is_label(line, label)) {
-      if (find_symbol(label)) {
-        printf("Error: line %d - label '%s' defined more than once\n",
-               line_number, label);
+      Symbol *existing_sym = find_symbol(label);
+      if (existing_sym) {
+        if (existing_sym->type == SYM_EXTERN) {
+          printf("Error: line %d - label '%s' was declared as .extern and "
+                 "cannot be defined in this file\n",
+                 line_number, label);
+        } else {
+          printf("Error: line %d - label '%s' defined more than once\n",
+                 line_number, label);
+        }
         error_found = 1;
       } else if (is_data_directive(line))
-        add_symbol(label, DC, 1);
+        add_symbol(label, DC, SYM_DATA);
       else
-        add_symbol(label, IC, 0);
+        add_symbol(label, IC, SYM_CODE);
     }
 
+    /* Step 2.2: Line Statement Encoding */
     if (is_instruction(line)) {
       int complete = 1;
       char sym[MAX_LABEL_LENGTH + 1];
@@ -690,8 +810,23 @@ int first_pass(char *filename) {
           printf("Error: line %d - extraneous text after .extern directive\n",
                  line_number);
           error_found = 1;
-        } else if (!find_symbol(sym)) {
-          add_symbol(sym, 0, 2);
+        } else {
+          Symbol *existing_sym = find_symbol(sym);
+          EntryNode *existing_ent = find_entry(sym);
+
+          if (existing_sym && existing_sym->type != SYM_EXTERN) {
+            printf("Error: line %d - label '%s' is defined locally and cannot "
+                   "be declared as .extern\n",
+                   line_number, sym);
+            error_found = 1;
+          } else if (existing_ent) {
+            printf("Error: line %d - label '%s' cannot be both .entry and "
+                   ".extern\n",
+                   line_number, sym);
+            error_found = 1;
+          } else if (!existing_sym) {
+            add_symbol(sym, 0, SYM_EXTERN);
+          }
         }
       }
     } else if (is_entry(line)) {
@@ -714,15 +849,23 @@ int first_pass(char *filename) {
           printf("Error: line %d - extraneous text after .entry directive\n",
                  line_number);
           error_found = 1;
-        } else if (!find_entry(sym)) {
-          add_entry(sym, line_number);
+        } else {
+          Symbol *existing_sym = find_symbol(sym);
+
+          if (existing_sym && existing_sym->type == SYM_EXTERN) {
+            printf("Error: line %d - label '%s' cannot be both .entry and "
+                   ".extern\n",
+                   line_number, sym);
+            error_found = 1;
+          } else if (!find_entry(sym)) {
+            add_entry(sym, line_number);
+          }
         }
       }
     } else {
       printf("Error: line %d - unknown instruction\n", line_number);
       error_found = 1;
     }
-    /* printf("line %d - %s\n", line_number, line); */
   }
 
   fclose(fp);
@@ -730,37 +873,35 @@ int first_pass(char *filename) {
   if (error_found)
     return 1;
 
+  /* -------- Step 3: Compute Final Memory Offsets -------- */
   ICF = IC;
   DCF = DC;
 
-  { /*why are the code blocks here?*/
+  /* Step 3.1: Adjust Data Symbol Addresses by Adding ICF */
+  {
     Symbol *cur = symbol_table;
     while (cur) {
-      if (cur->type == 1)
+      if (cur->type == SYM_DATA)
         cur->value += ICF;
       cur = cur->next;
     }
   }
 
+  /* Step 3.2: Adjust Data Image Byte Addresses by Adding ICF */
   {
     int i;
     for (i = 0; i < data_size; i++)
       data_image[i].address += ICF;
   }
-  /*
-  printf("------------------------------\n");
-  print_code_image(code_image, code_size);
-  printf("------------------------------\n");
-  print_data_image(data_image, data_size);
-  printf("------------------------------\n");
-  print_symbol_table(symbol_table);
-  printf("------------------------------\n");
-  print_entry_list(entry_list);
-  */
 
   return 0;
 }
 
+/* ---- Memory Cleanup ---- */
+
+/**
+ * @brief Resets and frees all global memory allocations after processing a file.
+ */
 void free_assembler_memory(void) {
   if (code_image) {
     free(code_image);

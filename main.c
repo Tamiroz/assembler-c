@@ -1,12 +1,12 @@
 /**
  * @file main.c
- * @brief Main entry point for the 2-pass MIPS-style Assembler pipeline.
+ * @brief main file for assembler project
  *
- * Drives the compilation flow for each input assembly file provided via command-line:
- *   1. Pre-Assembler: Macro definition extraction & text expansion (.as -> .am)
- *   2. First Pass: Code/Data binary encoding & Symbol Table generation
- *   3. Second Pass: Symbol address resolution & entry/extern validation
- *   4. Output Converter: Object (.ob), Entry (.ent), and External (.ext) file generation
+ * runs all steps for files given in cmd args:
+ *   1. pre-assembler: expand macros in .as to get .am file
+ *   2. first pass: build symbol table and encode instructions & data
+ *   3. second pass: fix label addresses and check entry/extern
+ *   4. output files: create .ob, .ent and .ext files
  */
 
 #include "first_pass.h"
@@ -17,25 +17,31 @@
 #include <stdio.h>
 
 /**
- * @brief Main function executing assembly processing over all command-line file arguments.
+ * @brief main function running assembler pipeline over files passed in argv
  *
- * @param argc Number of command-line arguments.
- * @param argv Array of command-line argument strings (filenames without or with extension).
- * @return int Returns 0 on completion of all processed files, or 1 if no input arguments provided.
+ * @param argc amount of arguments
+ * @param argv list of file names
+ * @return int 0 if done all files ok, 1 if no file names passed
  */
 int main(int argc, char *argv[]) {
   int i;
+
+  /* -------- Step 1: check command line args -------- */
   if (argc < 2) {
     printf("please provide a file name\n");
     return 1;
   }
+
+  /* -------- Step 2: process files one by one -------- */
   for (i = 1; i < argc; i++) {
+    /* Step 2.1: pre-assembler macro expansion */
     if (pre_assemble(argv[i]) == ERR) {
       printf("pre_assembler failed for file \"%s\"\n", argv[i]);
       continue;
     }
     printf("pre_assembler passed for file \"%s\"\n", argv[i]);
 
+    /* Step 2.2: first pass (encoding and build symbols) */
     if (first_pass(argv[i]) == ERR) {
       printf("first_pass failed for file \"%s\"\n", argv[i]);
       free_assembler_memory();
@@ -43,6 +49,7 @@ int main(int argc, char *argv[]) {
     }
     printf("first_pass passed for file \"%s\"\n", argv[i]);
 
+    /* Step 2.3: second pass (complete label addresses) */
     if (second_pass(argv[i]) == ERR) {
       printf("second_pass failed for file \"%s\"\n", argv[i]);
       free_assembler_memory();
@@ -50,6 +57,7 @@ int main(int argc, char *argv[]) {
     }
     printf("second_pass passed for file \"%s\"\n", argv[i]);
 
+    /* Step 2.4: write output files (.ob, .ent, .ext) */
     if (output_conversion(argv[i]) == ERR) {
       printf("output_conversion failed for file %s\n", argv[i]);
       free_assembler_memory();
@@ -57,6 +65,7 @@ int main(int argc, char *argv[]) {
     }
     printf("output_conversion passed for file \"%s\"\n", argv[i]);
 
+    /* Step 2.5: free allocated memory for file */
     free_assembler_memory();
   }
 

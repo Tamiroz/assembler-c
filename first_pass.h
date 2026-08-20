@@ -1,118 +1,195 @@
 /**
  * @file first_pass.h
- * @brief Header file for First Pass memory layout, data structures, and function declarations.
+ * @brief header file for first pass structures and functions
  */
 
 #ifndef FIRST_PASS_H
 #define FIRST_PASS_H
 
+/* ---- Memory Architecture & Constant Definitions ---- */
+
 #define MAX_LINE_LENGTH 82
 #define MAX_LABEL_LENGTH 31
 #define STARTING_ADDRESS 100
 
-/* ---- Data Structures ---- */
+/* ---- Data Structure Definitions ---- */
 
 /**
  * @struct CodeEntry
- * @brief Represents an encoded 32-bit instruction word in code memory.
+ * @brief code image entry holding address and 32bit binary instruction
  */
 typedef struct {
-  int address;                        /**< Memory address (starting at 100) */
-  unsigned int code;                 /**< Encoded 32-bit instruction word */
-  int complete;                      /**< 1 if fully resolved, 0 if operand label needs Pass 2 */
-  char symbol[MAX_LABEL_LENGTH + 1]; /**< Missing operand symbol name if complete == 0 */
+  int address;                        /**< memory address starting 100 */
+  unsigned int code;                 /**< 32bit machine code */
+  int complete;                      /**< 1 if encoded ok, 0 if label operand needs pass 2 */
+  char symbol[MAX_LABEL_LENGTH + 1]; /**< missing symbol name if complete == 0 */
 } CodeEntry;
 
 /**
  * @struct DataEntry
- * @brief Represents a single byte in data memory.
+ * @brief data byte entry holding address and byte value
  */
 typedef struct {
-  int address;          /**< Final memory address (starting at ICF) */
-  unsigned char value;  /**< Byte value */
+  int address;          /**< final data address */
+  unsigned char value;  /**< byte value */
 } DataEntry;
 
 /**
  * @enum SymbolType
- * @brief Symbol categorization (Code label, Data label, or External reference).
+ * @brief symbol type (code, data, extern)
  */
 typedef enum { SYM_CODE = 0, SYM_DATA = 1, SYM_EXTERN = 2 } SymbolType;
 
 /**
  * @struct Symbol
- * @brief Node in the Symbol Table linked list.
+ * @brief node in symbol table linked list
  */
 typedef struct Symbol {
-  char name[MAX_LABEL_LENGTH + 1]; /**< Symbol label name */
-  int value;                       /**< Memory address or 0 for EXTERN */
-  SymbolType type;                 /**< Symbol type (CODE, DATA, EXTERN) */
-  struct Symbol *next;             /**< Pointer to next symbol in linked list */
+  char name[MAX_LABEL_LENGTH + 1]; /**< symbol label name */
+  int value;                       /**< address value or 0 for extern */
+  SymbolType type;                 /**< symbol type */
+  struct Symbol *next;             /**< next symbol in list */
 } Symbol;
 
 /**
  * @struct EntryNode
- * @brief Node in the .entry declarations linked list.
+ * @brief node for .entry list
  */
 typedef struct EntryNode {
-  char symbol[MAX_LABEL_LENGTH + 1]; /**< Entry label name */
-  int line_number;                   /**< Source file line number for error logging */
-  int address;                       /**< Resolved memory address from Symbol Table */
-  struct EntryNode *next;            /**< Pointer to next entry node */
+  char symbol[MAX_LABEL_LENGTH + 1]; /**< entry label name */
+  int line_number;                   /**< line number where declared */
+  int address;                       /**< resolved symbol address */
+  struct EntryNode *next;            /**< next entry in list */
 } EntryNode;
 
 /**
  * @struct ExternNode
- * @brief Node in the .extern references linked list.
+ * @brief node for .extern list
  */
 typedef struct ExternNode {
-  char symbol[MAX_LABEL_LENGTH + 1]; /**< External label name */
-  int address;                       /**< Memory address of the instruction referencing it */
-  struct ExternNode *next;           /**< Pointer to next extern node */
+  char symbol[MAX_LABEL_LENGTH + 1]; /**< extern label name */
+  int address;                       /**< address of instruction referencing extern */
+  struct ExternNode *next;           /**< next extern node */
 } ExternNode;
 
-/* ---- Global Variables ---- */
+/* ---- Global Assembler Variables ---- */
 
-extern int ICF;                     /**< Final Instruction Counter */
-extern int DCF;                     /**< Final Data Counter */
-extern CodeEntry *code_image;       /**< Dynamic array of code entries */
-extern int code_size;               /**< Number of instructions in code_image */
-extern DataEntry *data_image;       /**< Dynamic array of data bytes */
-extern int data_size;               /**< Number of bytes in data_image */
-extern Symbol *symbol_table;        /**< Head pointer of Symbol Table linked list */
-extern EntryNode *entry_list;       /**< Head pointer of Entry declarations linked list */
-extern ExternNode *extern_list;     /**< Head pointer of Extern references linked list */
+extern int ICF;                     /**< final instruction counter */
+extern int DCF;                     /**< final data counter */
+extern CodeEntry *code_image;       /**< dynamic array for code entries */
+extern int code_size;               /**< amount of instructions in code_image */
+extern DataEntry *data_image;       /**< dynamic array for data bytes */
+extern int data_size;               /**< amount of bytes in data_image */
+extern Symbol *symbol_table;        /**< symbol table list head */
+extern EntryNode *entry_list;       /**< entry list head */
+extern ExternNode *extern_list;     /**< extern list head */
 
-/* ---- Function Declarations ---- */
-
-int is_reserved_word(const char *word);
-void skip_spaces(char *line, int *i);
-void get_next_word(char *line, int *i, char *word);
-void trim_whitespace(char *line);
-void skip_label(char *line, int *i);
-int is_label(char *line, char *label);
-int is_empty_or_comment(char *line);
-int is_instruction(char *line);
-int is_data_directive(char *line);
-int is_extern(char *line);
-void add_symbol(const char *name, int value, int type);
-Symbol *find_symbol(const char *name);
+/* ---- String & Token Parsing Helpers ---- */
 
 /**
- * @brief Executes Pass 1 over an assembly source file.
+ * @brief check if word is reserved opcode or directive
+ * @param word token to check
+ * @return int 1 if reserved, 0 if not
+ */
+int is_reserved_word(const char *word);
+
+/**
+ * @brief skip spaces and tabs in line
+ * @param line input line string
+ * @param i current index pointer
+ */
+void skip_spaces(char *line, int *i);
+
+/**
+ * @brief get next word token from line
+ * @param line input line string
+ * @param i current index pointer
+ * @param word output buffer for word
+ */
+void get_next_word(char *line, int *i, char *word);
+
+/**
+ * @brief trim spaces from start and end of line
+ * @param line input line string
+ */
+void trim_whitespace(char *line);
+
+/**
+ * @brief skip label prefix at start of line
+ * @param line input line string
+ * @param i current index pointer
+ */
+void skip_label(char *line, int *i);
+
+/* ---- Syntax Classification Functions ---- */
+
+/**
+ * @brief check if line defines a label
+ * @param line input line string
+ * @param label output buffer for label name
+ * @return int 1 if label found, 0 if not
+ */
+int is_label(char *line, char *label);
+
+/**
+ * @brief check if line is empty or comment line
+ * @param line input line string
+ * @return int 1 if empty or comment, 0 if not
+ */
+int is_empty_or_comment(char *line);
+
+/**
+ * @brief check if line is instruction statement
+ * @param line input line string
+ * @return int 1 if instruction, 0 if not
+ */
+int is_instruction(char *line);
+
+/**
+ * @brief check if line is data directive (.db, .dh, .dw, .asciz)
+ * @param line input line string
+ * @return int 1 if data directive, 0 if not
+ */
+int is_data_directive(char *line);
+
+/**
+ * @brief check if line is .extern directive
+ * @param line input line string
+ * @return int 1 if .extern, 0 if not
+ */
+int is_extern(char *line);
+
+/* ---- Symbol Table & Linked List Functions ---- */
+
+/**
+ * @brief add new symbol node to symbol table
+ * @param name symbol label name
+ * @param value address or offset
+ * @param type symbol type (code/data/extern)
+ */
+void add_symbol(const char *name, int value, int type);
+
+/**
+ * @brief find symbol in symbol table by name
+ * @param name symbol name to search
+ * @return Symbol* pointer to symbol node if found, NULL if not
+ */
+Symbol *find_symbol(const char *name);
+
+/* ---- Pass 1 Main Pipeline ---- */
+
+/**
+ * @brief run first pass over .am file
  *
- * @param filename Name of the source file.
- * @return int 0 on success, 1 on error.
+ * @param filename name of source file
+ * @return int 0 if pass ok, 1 if error
  */
 int first_pass(char *filename);
 
-void print_code_image(CodeEntry *code_image, int code_size);
-void print_data_image(DataEntry *data_image, int data_size);
-void print_symbol_table(Symbol *symbol_table);
-void print_entry_list(EntryNode *entry_list);
-void print_extern_list(ExternNode *extern_list);
+/* ---- Memory Cleanup ---- */
 
 /**
- * @brief Resets and frees all global memory allocations after processing a file.
+ * @brief free allocated memory for assembler tables
  */
 void free_assembler_memory(void);
 

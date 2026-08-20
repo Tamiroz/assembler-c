@@ -1,22 +1,26 @@
 
-
-later:
-1.check if there is overlap between extern and entry labels
-2.fix memory leaks and exits
-3.check if we did everything good, defining repeating values, creating variables in the beginning etc
-4.make outputs uniform in style
-5.remember to replace numbers with defined values also in "complete"
-
-
-questions:
-1.do we need a function to check empty lines?
-2.do we need a function to check comment lines?
-3.does is_end in first run has to have hlt command? or can it just be END, if so might need to change function]
-4.what happens if there is excess words after entry/extern/end?
-5.is it legal to decalre variables mid code?
-
-
-notes:
-1.i have removed is_end function in first_pass.c
-
+fixes:
+2.[DONE] לוודא הערות לכל פונקציה קובץ וכו'
+8.add in which file the error occured
+9.[DONE] excess content before mcro, error not found
+11.בדיקה לפי הטבלה של המטלות הקודמות (נמצא בניתוח שגיאות)
+12.להריץ את קובץ 3-4 ולבדוק תקינות
+14.fix memory leaks and exits
+15.check if we did everything good, defining repeating values, creating variables in the beginning etc
+16.[DONE] make outputs uniform in style
+17.remember to replace numbers with defined values also in "complete"
+18.what happens if there is excess words after entry/extern/end?
+19.is it legal to decalre variables mid code?
+20.fix branch instruction offset calculation in second pass: calculate target_address - current_address for bne/beq/blt/bgt instead of bitwise-ORing absolute address
+21.add strict syntax validation in first pass: operand count per opcode, valid operand types (e.g., la requires label, not register)
+22.add comma syntax checking: enforce single comma between operands, report errors for double commas (,,), leading commas, trailing commas, missing commas
+23.validate register numbers: enforce range $0 to $31 (reject out-of-range registers like $35 or malformed names)
+24.validate numeric immediate values: reject floating point numbers (e.g., 6.5), invalid non-numeric tokens, and out-of-range 16-bit signed values
+25.validate string quotes in .asciz: report error if closing quote is missing
+26.enforce maximum line length of 80 characters (excluding newline)
+27.fix filename string mutation: replace destructive strtok(filename, ".") on argv with non-destructive buffer copying (snprintf/strcpy)
+28.include filename in all error output messages (e.g., Error in filename.as line X: ...)
+29.clean up orphan .am files if pre_assembler fails
+30.add clean target to Makefile (clean: rm -f *.o assembler)
+31.fix file3.as test case (call GEN_MC macro) and capture screen output (stdout error logs) for file4.as error suite
 

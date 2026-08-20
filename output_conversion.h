@@ -1,40 +1,44 @@
 /**
  * @file output_conversion.h
- * @brief Header file for output file generation phase (.ob, .ent, .ext).
+ * @brief header file for writing output files (.ob, .ent, .ext)
  */
 
 #ifndef OUTPUT_CONVERSION_H
 #define OUTPUT_CONVERSION_H
 
+/* ---- Main Output Conversion Driver ---- */
+
 /**
- * @brief Main output conversion driver for creating all target files.
+ * @brief create output files (.ob, .ent, .ext) for assembled file
  *
- * @param input_filename Base filename string.
- * @return int 0 on success, 1 on error.
+ * @param input_filename name of input file
+ * @return int 0 if all files created ok, 1 if error
  */
 int output_conversion(char *input_filename);
 
+/* ---- Target File Generation Generators ---- */
+
 /**
- * @brief Generates the object output file (.ob) containing code and data images.
+ * @brief write object file (.ob) containing code and data images
  *
- * @param filename Base filename string.
- * @return int 0 on success, 1 on file creation error.
+ * @param filename name of file
+ * @return int 0 if ok, 1 if file error
  */
 int convert_to_object_file(char *filename);
 
 /**
- * @brief Generates the entry output file (.ent) if entry labels exist.
+ * @brief write entry file (.ent) if entry labels exist
  *
- * @param input_filename Base filename string.
- * @return int 0 on success (or if no entry labels exist), 1 on file creation error.
+ * @param input_filename name of file
+ * @return int 0 if ok (or no entries), 1 if file error
  */
 int convert_to_entry_file(char *input_filename);
 
 /**
- * @brief Generates the extern output file (.ext) if external references exist.
+ * @brief write extern file (.ext) if external symbols used
  *
- * @param input_filename Base filename string.
- * @return int 0 on success (or if no external references exist), 1 on file creation error.
+ * @param input_filename name of file
+ * @return int 0 if ok (or no externs), 1 if file error
  */
 int convert_to_extern_file(char *input_filename);
 

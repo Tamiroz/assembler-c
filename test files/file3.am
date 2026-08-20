@@ -1,0 +1,16 @@
+;file3.as
+;sample source code
+.entry NEXT
+.extern wNumber
+STR: .asciz "aBcd"
+MAIN: add $3,$5,$9
+NEXT: move $20,$4
+LIST: .db 6,-9
+ bgt $4,$2,END
+ bne $31,$9, LOOP
+ call val1
+.extern val1
+ .dh 27056
+K: .dw 31,-12
+END: hlt
+.entry K

@@ -1,9 +1,8 @@
 /**
  * @file pre_assembler.c
- * @brief Implementation of the macro expansion pre-pass.
+ * @brief implementation of macro expansion pass
  *
- * Reads an assembly source file (.as), stores all macro definitions ('mcro' ... 'mcroend'),
- * expands macro calls inline, and outputs the expanded source code into a '.am' file.
+ * reads .as file, saves macros ('mcro'...'mcroend'), expands macro calls and writes to .am file
  */
 
 #include <stdio.h>
@@ -13,6 +12,16 @@
 #include "first_pass.h"
 #include "pre_assembler.h"
 
+/* ---- Main Pre-Assembler Engine ---- */
+
+/**
+ * @brief pre assemble input file by expanding macros
+ *
+ * reads .as file, saves macros ('mcro'...'mcroend'), expands macro calls and writes to .am file
+ *
+ * @param file_name name of input file
+ * @return int OK (0) if pass succeeded, ERR (1) if failed
+ */
 int pre_assemble(char *file_name) {
   FILE *rfp;
   FILE *wfp;
@@ -29,7 +38,7 @@ int pre_assemble(char *file_name) {
   int macro_idx;
   int line_num = 0;
 
-  /* Check if file name ends with .as */
+  /* -------- Step 1: check file extension -------- */
   if ((file_name = strtok(file_name, ".")) == NULL) {
     printf("error, invalid file name\n");
     return ERR;
@@ -41,6 +50,7 @@ int pre_assemble(char *file_name) {
     return ERR;
   }
 
+  /* -------- Step 2: open source file (.as) and destination file (.am) -------- */
   strcpy(new_file_name, file_name);
   strcat(new_file_name, ".as");
 
@@ -58,12 +68,27 @@ int pre_assemble(char *file_name) {
     return ERR;
   }
 
-  /* Go through each line in the source file */
+  /* -------- Step 3: loop lines and do macro expansion -------- */
   while (fgets(line, LINE_SIZE, rfp) != NULL) {
     strcpy(work_line, line);
     token = strtok(work_line, " \t\n\r");
 
-    /* --------------- handle case: macro definition --------------- */
+    /* Step 3.1: check if mcro appears after another word on line */
+    if (token != NULL && strcmp(token, "mcro") != 0) {
+      char *check_token = strtok(NULL, " \t\n\r");
+      while (check_token != NULL) {
+        if (strcmp(check_token, "mcro") == 0) {
+          printf("error: line %d, excess content before mcro\n", line_num);
+          free_memory_pre_assembler(m_list, mcro_count);
+          fclose(rfp);
+          fclose(wfp);
+          return ERR;
+        }
+        check_token = strtok(NULL, " \t\n\r");
+      }
+    }
+
+    /* Step 3.2: process mcro definition block */
     if (token != NULL && strcmp(token, "mcro") == 0) {
       m_label = strtok(NULL, " \t\n\r");
       if (m_label == NULL) {
@@ -95,7 +120,7 @@ int pre_assemble(char *file_name) {
         return ERR;
       }
 
-      /* Save macro label */
+      /* realloc memory for macro array */
       temp = (Macro *)realloc(m_list, (mcro_count + 1) * sizeof(Macro));
       if (temp == NULL) {
         printf("error, memory allocation failed\n");
@@ -109,7 +134,7 @@ int pre_assemble(char *file_name) {
       strcpy(m_list[mcro_count].label, m_label);
       mcro_count++;
 
-      /* Allocate memory for macro content */
+      /* read macro body lines until mcroend */
       content = (char *)malloc(LINE_SIZE);
       if (content == NULL) {
         printf("error, memory allocation failed\n");
@@ -125,8 +150,6 @@ int pre_assemble(char *file_name) {
       fgets(line, LINE_SIZE, rfp);
       strcpy(work_line, line);
       token = strtok(work_line, " \t\n\r");
-
-      /*save macro content*/
 
       while (token == NULL || strcmp(token, "mcroend") != 0) {
         char *temp_content;
@@ -159,18 +182,19 @@ int pre_assemble(char *file_name) {
       }
       m_list[mcro_count - 1].content = content;
     }
-    /* --------------- handle case: macro call expansion --------------- */
+    /* Step 3.3: expand macro call if name matches */
     else if (token != NULL &&
              (macro_idx = find_macro_label(token, m_list, mcro_count)) != -1) {
       fputs(m_list[macro_idx].content, wfp);
     }
-    /* --------------- handle case: regular line --------------- */
+    /* Step 3.4: write regular code line to output */
     else {
       fputs(line, wfp);
     }
     line_num++;
   }
-  /* free memory */
+
+  /* -------- Step 4: clean memory and close files -------- */
   free_memory_pre_assembler(m_list, mcro_count);
   fclose(rfp);
   fclose(wfp);
@@ -178,6 +202,16 @@ int pre_assemble(char *file_name) {
   return OK;
 }
 
+/* ---- Macro Validation & Lookup Helpers ---- */
+
+/**
+ * @brief check if label was not used as macro name before
+ *
+ * @param label macro name to check
+ * @param m_list list of saved macros
+ * @param mcro_count number of macros saved
+ * @return int 1 if label free, 0 if already exists
+ */
 int is_free_macro_label(const char *label, Macro *m_list, int mcro_count) {
   int i;
   for (i = 0; i < mcro_count; i++) {
@@ -188,6 +222,14 @@ int is_free_macro_label(const char *label, Macro *m_list, int mcro_count) {
   return 1;
 }
 
+/**
+ * @brief search macro in macro array by label
+ *
+ * @param label macro name to locate
+ * @param m_list list of saved macros
+ * @param mcro_count number of macros saved
+ * @return int index in m_list if found, -1 if not found
+ */
 int find_macro_label(const char *label, Macro *m_list, int mcro_count) {
   int i;
   for (i = 0; i < mcro_count; i++) {
@@ -198,6 +240,12 @@ int find_macro_label(const char *label, Macro *m_list, int mcro_count) {
   return -1;
 }
 
+/**
+ * @brief check if macro name is valid identifier
+ *
+ * @param name candidate macro label
+ * @return int 1 if valid, 0 if invalid (like reserved word or bad chars)
+ */
 int is_valid_macro_label(const char *name) {
   int i, len;
   if (!name || !isalpha((unsigned char)name[0]))
@@ -211,7 +259,14 @@ int is_valid_macro_label(const char *name) {
   return !is_reserved_word(name);
 }
 
-/*free memory function*/
+/* ---- Memory Management ---- */
+
+/**
+ * @brief free allocated memory of macro list
+ *
+ * @param m_list list of Macro structures
+ * @param mcro_count number of macros in list
+ */
 void free_memory_pre_assembler(Macro *m_list, int mcro_count) {
   int i;
   for (i = 0; i < mcro_count; i++) {

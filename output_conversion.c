@@ -1,6 +1,6 @@
 /**
  * @file output_conversion.c
- * @brief Implementation of target file generation (.ob, .ent, .ext).
+ * @brief implementation for output files generation (.ob, .ent, .ext)
  */
 
 #include "output_conversion.h"
@@ -9,11 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* ---- List Output Printing Helpers ---- */
+
 /**
- * @brief Recursively prints external symbol occurrences in chronological order.
+ * @brief print extern symbols recursively in chronological order
  *
- * @param extern_list Pointer to head of the ExternNode linked list.
- * @param ext_file Pointer to open .ext output file handle.
+ * @param extern_list head of ExternNode list
+ * @param ext_file pointer to .ext file
  */
 void print_externs(ExternNode *extern_list, FILE *ext_file) {
   if (extern_list == NULL)
@@ -24,23 +26,26 @@ void print_externs(ExternNode *extern_list, FILE *ext_file) {
 }
 
 /**
- * @brief Iterates and prints entry symbols and their resolved addresses.
+ * @brief print entry symbols recursively in definition order
  *
- * @param entry_list Pointer to head of the EntryNode linked list.
- * @param ent_file Pointer to open .ent output file handle.
+ * @param entry_list head of EntryNode list
+ * @param ent_file pointer to .ent file
  */
 void print_entries(EntryNode *entry_list, FILE *ent_file) {
-  while (entry_list != NULL) {
-    fprintf(ent_file, "%s %04d\n", entry_list->symbol, entry_list->address);
-    entry_list = entry_list->next;
-  }
+  if (entry_list == NULL)
+    return;
+
+  print_entries(entry_list->next, ent_file);
+  fprintf(ent_file, "%s %04d\n", entry_list->symbol, entry_list->address);
 }
 
+/* ---- Target Output File Generators ---- */
+
 /**
- * @brief Formats and writes instruction and data images into the .ob object file.
+ * @brief write code and data image into .ob object file
  *
- * @param filename Name of the file being processed.
- * @return int 0 on success, 1 on file creation error.
+ * @param filename name of input file
+ * @return int 0 if ok, 1 if error
  */
 int convert_to_object_file(char *filename) {
   FILE *ob_file;
@@ -49,6 +54,7 @@ int convert_to_object_file(char *filename) {
   int j;
   unsigned char *code_ptr;
 
+  /* -------- Step 1: open object file (.ob) -------- */
   filename = strtok(filename, ".");
   strcpy(file_name, filename);
   strcat(file_name, ".ob");
@@ -58,18 +64,23 @@ int convert_to_object_file(char *filename) {
     return 1;
   }
 
-  fprintf(ob_file, "%6d %d\n", ICF - STARTING_ADDRESS, DCF);
+  /* -------- Step 2: write header line with IC and DC counts -------- */
+  fprintf(ob_file, "%7d %d\n", ICF - STARTING_ADDRESS, DCF);
+
+  /* -------- Step 3: write code section machine words -------- */
   for (i = 0; i < code_size; i++) {
     code_ptr = (unsigned char *)&(code_image[i].code);
-    fprintf(ob_file, "%d", code_image[i].address);
+    fprintf(ob_file, "%04d", code_image[i].address);
     for (j = 0; j < 4; j++) {
       fprintf(ob_file, " %02X", (unsigned char)code_ptr[j]);
     }
     fprintf(ob_file, "\n");
   }
+
+  /* -------- Step 4: write data section bytes -------- */
   for (i = 0; i < data_size; i++) {
     if (i % 4 == 0)
-      fprintf(ob_file, "%d", data_image[i].address);
+      fprintf(ob_file, "%04d", data_image[i].address);
     fprintf(ob_file, " %02X", (unsigned char)data_image[i].value);
     if ((i + 1) % 4 == 0)
       fprintf(ob_file, "\n");
@@ -78,7 +89,12 @@ int convert_to_object_file(char *filename) {
   return 0;
 }
 
-/* convert_to_entry_file: convert entry list to entry file*/
+/**
+ * @brief write .ent file if entry list is not empty
+ *
+ * @param filename name of file
+ * @return int 0 if ok, 1 if file error
+ */
 int convert_to_entry_file(char *filename) {
   FILE *ent_file;
   char file_name[MAX_LINE_LENGTH];
@@ -100,7 +116,12 @@ int convert_to_entry_file(char *filename) {
   return 0;
 }
 
-/* convert_to_extern_file: convert extern list to extern file*/
+/**
+ * @brief write .ext file if extern list is not empty
+ *
+ * @param filename name of file
+ * @return int 0 if ok, 1 if file error
+ */
 int convert_to_extern_file(char *filename) {
   FILE *ext_file;
   char *temp;
@@ -128,18 +149,28 @@ int convert_to_extern_file(char *filename) {
   return 0;
 }
 
-/* output_conversion: convert code image to object file */
+/* ---- Main Output Conversion Driver ---- */
+
+/**
+ * @brief driver function to generate all output files (.ob, .ent, .ext)
+ *
+ * @param input_filename name of input file
+ * @return int 0 if ok, 1 if error
+ */
 int output_conversion(char *input_filename) {
+  /* -------- Step 1: make .ob object file -------- */
   if (convert_to_object_file(input_filename)) {
     printf("Error: cannot create object file %s\n", input_filename);
     return 1;
   }
 
+  /* -------- Step 2: make .ent entry file -------- */
   if (convert_to_entry_file(input_filename)) {
     printf("Error: cannot create entry file %s\n", input_filename);
     return 1;
   }
 
+  /* -------- Step 3: make .ext extern file -------- */
   if (convert_to_extern_file(input_filename)) {
     printf("Error: cannot create extern file %s\n", input_filename);
     return 1;
