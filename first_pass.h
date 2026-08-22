@@ -8,6 +8,28 @@
 
 /* ---- Memory Architecture & Constant Definitions ---- */
 
+#ifndef OK
+#define OK 0
+#endif
+
+#ifndef ERR
+#define ERR 1
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#define COMPLETE 1
+#define INCOMPLETE 0
+#define OPCODE_HLT 63
+#define NAME_SIZE 10
+#define STR_MATCH 0
+
 #define MAX_LINE_LENGTH 82
 #define MAX_LABEL_LENGTH 31
 #define STARTING_ADDRESS 100
@@ -167,7 +189,7 @@ int is_extern(char *line);
  * @param value address or offset
  * @param type symbol type (code/data/extern)
  */
-void add_symbol(const char *name, int value, int type);
+void add_symbol(const char *name, int value, SymbolType type);
 
 /**
  * @brief find symbol in symbol table by name

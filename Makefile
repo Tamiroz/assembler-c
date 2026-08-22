@@ -18,6 +18,7 @@ second_pass.o: second_pass.c second_pass.h first_pass.h
 
 output_conversion.o: output_conversion.c output_conversion.h first_pass.h
 	$(CC) $(CFLAGS) -c output_conversion.c -o output_conversion.o
+clean:
+	rm -f *.o assembler *.am *.ob *.ent *.ext
 
-
-
+.PHONY: clean

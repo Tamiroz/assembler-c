@@ -13,8 +13,23 @@
 
 /* ---- Constants & Macro Data Structures ---- */
 
+#ifndef OK
 #define OK 0
+#endif
+
+#ifndef ERR
 #define ERR 1
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#define NOT_FOUND -1
 #define LINE_SIZE 80
 #define LABEL 35
 #define MAX_LABEL_LENGTH 31

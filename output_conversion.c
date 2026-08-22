@@ -61,7 +61,7 @@ int convert_to_object_file(char *filename) {
   ob_file = fopen(file_name, "w");
   if (!ob_file) {
     printf("Error: cannot create file %s\n", file_name);
-    return 1;
+    return ERR;
   }
 
   /* -------- Step 2: write header line with IC and DC counts -------- */
@@ -86,7 +86,7 @@ int convert_to_object_file(char *filename) {
       fprintf(ob_file, "\n");
   }
   fclose(ob_file);
-  return 0;
+  return OK;
 }
 
 /**
@@ -100,7 +100,7 @@ int convert_to_entry_file(char *filename) {
   char file_name[MAX_LINE_LENGTH];
 
   if (entry_list == NULL)
-    return 0;
+    return OK;
 
   filename = strtok(filename, ".");
   strcpy(file_name, filename);
@@ -108,12 +108,12 @@ int convert_to_entry_file(char *filename) {
   ent_file = fopen(file_name, "w");
   if (!ent_file) {
     printf("Error: cannot create entry file %s\n", file_name);
-    return 1;
+    return ERR;
   }
 
   print_entries(entry_list, ent_file);
   fclose(ent_file);
-  return 0;
+  return OK;
 }
 
 /**
@@ -128,25 +128,25 @@ int convert_to_extern_file(char *filename) {
   char file_name[MAX_LINE_LENGTH];
 
   if (extern_list == NULL)
-    return 0;
+    return OK;
 
   strcpy(file_name, filename);
   temp = strtok(file_name, ".");
   if (temp == NULL) {
     printf("Error: invalid filename %s\n", filename);
-    return 1;
+    return ERR;
   }
 
   strcat(file_name, ".ext");
   ext_file = fopen(file_name, "w");
   if (!ext_file) {
     printf("Error: cannot create extern file %s\n", file_name);
-    return 1;
+    return ERR;
   }
 
   print_externs(extern_list, ext_file);
   fclose(ext_file);
-  return 0;
+  return OK;
 }
 
 /* ---- Main Output Conversion Driver ---- */
@@ -161,19 +161,19 @@ int output_conversion(char *input_filename) {
   /* -------- Step 1: make .ob object file -------- */
   if (convert_to_object_file(input_filename)) {
     printf("Error: cannot create object file %s\n", input_filename);
-    return 1;
+    return ERR;
   }
 
   /* -------- Step 2: make .ent entry file -------- */
   if (convert_to_entry_file(input_filename)) {
     printf("Error: cannot create entry file %s\n", input_filename);
-    return 1;
+    return ERR;
   }
 
   /* -------- Step 3: make .ext extern file -------- */
   if (convert_to_extern_file(input_filename)) {
     printf("Error: cannot create extern file %s\n", input_filename);
-    return 1;
+    return ERR;
   }
-  return 0;
+  return OK;
 }

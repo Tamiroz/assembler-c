@@ -2,7 +2,8 @@
  * @file pre_assembler.c
  * @brief implementation of macro expansion pass
  *
- * reads .as file, saves macros ('mcro'...'mcroend'), expands macro calls and writes to .am file
+ * reads .as file, saves macros ('mcro'...'mcroend'), expands macro calls and
+ * writes to .am file
  */
 
 #include <stdio.h>
@@ -17,7 +18,8 @@
 /**
  * @brief pre assemble input file by expanding macros
  *
- * reads .as file, saves macros ('mcro'...'mcroend'), expands macro calls and writes to .am file
+ * reads .as file, saves macros ('mcro'...'mcroend'), expands macro calls and
+ * writes to .am file
  *
  * @param file_name name of input file
  * @return int OK (0) if pass succeeded, ERR (1) if failed
@@ -29,6 +31,8 @@ int pre_assemble(char *file_name) {
   char line[LINE_SIZE];
   char work_line[LINE_SIZE];
   char *token;
+  char *check_token;
+  char *temp_content;
   int mcro_count = 0;
   int mcro_lines = 0;
   char *content;
@@ -50,7 +54,8 @@ int pre_assemble(char *file_name) {
     return ERR;
   }
 
-  /* -------- Step 2: open source file (.as) and destination file (.am) -------- */
+  /* -------- Step 2: open source file (.as) and destination file (.am) --------
+   */
   strcpy(new_file_name, file_name);
   strcat(new_file_name, ".as");
 
@@ -75,7 +80,7 @@ int pre_assemble(char *file_name) {
 
     /* Step 3.1: check if mcro appears after another word on line */
     if (token != NULL && strcmp(token, "mcro") != 0) {
-      char *check_token = strtok(NULL, " \t\n\r");
+      check_token = strtok(NULL, " \t\n\r");
       while (check_token != NULL) {
         if (strcmp(check_token, "mcro") == 0) {
           printf("error: line %d, excess content before mcro\n", line_num);
@@ -152,7 +157,6 @@ int pre_assemble(char *file_name) {
       token = strtok(work_line, " \t\n\r");
 
       while (token == NULL || strcmp(token, "mcroend") != 0) {
-        char *temp_content;
         mcro_lines++;
         temp_content = (char *)realloc(content, mcro_lines * LINE_SIZE);
         if (temp_content == NULL) {
@@ -183,8 +187,8 @@ int pre_assemble(char *file_name) {
       m_list[mcro_count - 1].content = content;
     }
     /* Step 3.3: expand macro call if name matches */
-    else if (token != NULL &&
-             (macro_idx = find_macro_label(token, m_list, mcro_count)) != -1) {
+    else if (token != NULL && (macro_idx = find_macro_label(
+                                   token, m_list, mcro_count)) != NOT_FOUND) {
       fputs(m_list[macro_idx].content, wfp);
     }
     /* Step 3.4: write regular code line to output */
@@ -210,16 +214,16 @@ int pre_assemble(char *file_name) {
  * @param label macro name to check
  * @param m_list list of saved macros
  * @param mcro_count number of macros saved
- * @return int 1 if label free, 0 if already exists
+ * @return int TRUE if label free, FALSE if already exists
  */
 int is_free_macro_label(const char *label, Macro *m_list, int mcro_count) {
   int i;
   for (i = 0; i < mcro_count; i++) {
-    if (strcmp(m_list[i].label, label) == 0) {
-      return 0;
+    if (strcmp(m_list[i].label, label) == STR_MATCH) {
+      return FALSE;
     }
   }
-  return 1;
+  return TRUE;
 }
 
 /**
@@ -228,34 +232,34 @@ int is_free_macro_label(const char *label, Macro *m_list, int mcro_count) {
  * @param label macro name to locate
  * @param m_list list of saved macros
  * @param mcro_count number of macros saved
- * @return int index in m_list if found, -1 if not found
+ * @return int index in m_list if found, NOT_FOUND if not found
  */
 int find_macro_label(const char *label, Macro *m_list, int mcro_count) {
   int i;
   for (i = 0; i < mcro_count; i++) {
-    if (strcmp(m_list[i].label, label) == 0) {
+    if (strcmp(m_list[i].label, label) == STR_MATCH) {
       return i;
     }
   }
-  return -1;
+  return NOT_FOUND;
 }
 
 /**
  * @brief check if macro name is valid identifier
  *
  * @param name candidate macro label
- * @return int 1 if valid, 0 if invalid (like reserved word or bad chars)
+ * @return int TRUE if valid, FALSE if invalid (like reserved word or bad chars)
  */
 int is_valid_macro_label(const char *name) {
   int i, len;
   if (!name || !isalpha((unsigned char)name[0]))
-    return 0;
+    return FALSE;
   len = (int)strlen(name);
   if (len > MAX_LABEL_LENGTH)
-    return 0;
+    return FALSE;
   for (i = 1; i < len; i++)
     if (!isalnum((unsigned char)name[i]) && (unsigned char)name[i] != '_')
-      return 0;
+      return FALSE;
   return !is_reserved_word(name);
 }
 

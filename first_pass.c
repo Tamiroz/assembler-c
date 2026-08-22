@@ -24,33 +24,34 @@ static const char *reserved_words[] = {
     ".dh",  ".dw",  ".asciz", ".entry", ".extern", NULL};
 
 /**
- * @brief Checks if a word is a reserved assembly instruction opcode or directive.
+ * @brief Checks if a word is a reserved assembly instruction opcode or
+ * directive.
  * @param word The candidate string to evaluate.
- * @return int 1 if reserved word, 0 otherwise.
+ * @return int TRUE if reserved word, FALSE otherwise.
  */
 int is_reserved_word(const char *word) {
   int i = 0;
   while (reserved_words[i] != NULL) {
-    if (strcmp(reserved_words[i], word) == 0)
-      return 1;
+    if (strcmp(reserved_words[i], word) == STR_MATCH)
+      return TRUE;
     i++;
   }
-  return 0;
+  return FALSE;
 }
 
 typedef struct {
-  char name[10];
+  char name[NAME_SIZE];
   int opcode;
   int funct;
 } RInstruction;
 
 typedef struct {
-  char name[10];
+  char name[NAME_SIZE];
   int opcode;
 } IInstruction;
 
 typedef struct {
-  char name[10];
+  char name[NAME_SIZE];
   int opcode;
 } JInstruction;
 
@@ -176,7 +177,7 @@ void trim_whitespace(char *line) {
  * @param value Address or offset value.
  * @param type Category (SYM_CODE, SYM_DATA, SYM_EXTERN).
  */
-void add_symbol(const char *name, int value, int type) {
+void add_symbol(const char *name, int value, SymbolType type) {
   Symbol *sym = (Symbol *)malloc(sizeof(Symbol));
   strncpy(sym->name, name, MAX_LABEL_LENGTH);
   sym->name[MAX_LABEL_LENGTH] = '\0';
@@ -194,7 +195,7 @@ void add_symbol(const char *name, int value, int type) {
 Symbol *find_symbol(const char *name) {
   Symbol *cur = symbol_table;
   while (cur) {
-    if (strcmp(cur->name, name) == 0)
+    if (strcmp(cur->name, name) == STR_MATCH)
       return cur;
     cur = cur->next;
   }
@@ -238,7 +239,8 @@ EntryNode *find_entry(const char *name) {
  * @brief Appends an encoded instruction word to the dynamic code_image array.
  * @param address Instruction memory address.
  * @param code 32-bit encoded instruction word.
- * @param complete 1 if instruction encoding is full, 0 if label resolution needed in Pass 2.
+ * @param complete 1 if instruction encoding is full, 0 if label resolution
+ * needed in Pass 2.
  * @param symbol Missing operand label string if complete == 0.
  */
 void add_to_code_image(int address, unsigned int code, int complete,
@@ -313,6 +315,12 @@ void skip_label(char *line, int *i) {
  * @param label Buffer to store extracted label name.
  * @return int 1 if label definition found, 0 otherwise.
  */
+/**
+ * @brief Determines whether line contains a valid label definition.
+ * @param line Input line buffer.
+ * @param label Buffer to store extracted label name.
+ * @return int TRUE if label definition found, FALSE otherwise.
+ */
 int is_label(char *line, char *label) {
   int i = 0;
   char first_word[MAX_LABEL_LENGTH + 1];
@@ -326,9 +334,9 @@ int is_label(char *line, char *label) {
     strcpy(label, first_word);
     if (!isalpha((unsigned char)label[0])) {
       label[0] = '\0';
-      return 0;
+      return FALSE;
     }
-    return 1;
+    return TRUE;
   }
 
   skip_spaces(line, &i);
@@ -336,18 +344,18 @@ int is_label(char *line, char *label) {
     strcpy(label, first_word);
     if (!isalpha((unsigned char)label[0])) {
       label[0] = '\0';
-      return 0;
+      return FALSE;
     }
-    return 1;
+    return TRUE;
   }
 
-  if (strcmp(first_word, "END") == 0) {
+  if (strcmp(first_word, "END") == STR_MATCH) {
     strcpy(label, "END");
-    return 1;
+    return TRUE;
   }
 
   label[0] = '\0';
-  return 0;
+  return FALSE;
 }
 
 int is_end(char *line) {
@@ -357,13 +365,13 @@ int is_end(char *line) {
   skip_spaces(line, &i);
   get_next_word(line, &i, word);
 
-  return (strcmp(word, "END") == 0);
+  return (strcmp(word, "END") == STR_MATCH);
 }
 
 /**
  * @brief Checks if a line is blank or contains a comment starting with ';'.
  * @param line Input line buffer.
- * @return int 1 if empty or comment, 0 otherwise.
+ * @return int TRUE if empty or comment, FALSE otherwise.
  */
 int is_empty_or_comment(char *line) {
   int i = 0;
@@ -374,7 +382,7 @@ int is_empty_or_comment(char *line) {
 /**
  * @brief Checks if a line contains an instruction opcode statement.
  * @param line Input line buffer.
- * @return int 1 if instruction statement, 0 otherwise.
+ * @return int TRUE if instruction statement, FALSE otherwise.
  */
 int is_instruction(char *line) {
   int i = 0;
@@ -385,7 +393,7 @@ int is_instruction(char *line) {
   get_next_word(line, &i, word);
 
   if (word[0] == '.')
-    return 0;
+    return FALSE;
 
   return is_reserved_word(word);
 }
@@ -393,7 +401,7 @@ int is_instruction(char *line) {
 /**
  * @brief Checks if a line contains a data directive (.db, .dh, .dw, .asciz).
  * @param line Input line buffer.
- * @return int 1 if data directive, 0 otherwise.
+ * @return int TRUE if data directive, FALSE otherwise.
  */
 int is_data_directive(char *line) {
   int i = 0;
@@ -403,22 +411,22 @@ int is_data_directive(char *line) {
   skip_spaces(line, &i);
   get_next_word(line, &i, word);
 
-  if (strcmp(word, ".db") == 0)
-    return 1;
-  if (strcmp(word, ".dh") == 0)
-    return 1;
-  if (strcmp(word, ".dw") == 0)
-    return 1;
-  if (strcmp(word, ".asciz") == 0)
-    return 1;
+  if (strcmp(word, ".db") == STR_MATCH)
+    return TRUE;
+  if (strcmp(word, ".dh") == STR_MATCH)
+    return TRUE;
+  if (strcmp(word, ".dw") == STR_MATCH)
+    return TRUE;
+  if (strcmp(word, ".asciz") == STR_MATCH)
+    return TRUE;
 
-  return 0;
+  return FALSE;
 }
 
 /**
  * @brief Checks if a line contains an .extern directive.
  * @param line Input line buffer.
- * @return int 1 if .extern directive, 0 otherwise.
+ * @return int TRUE if .extern directive, FALSE otherwise.
  */
 int is_extern(char *line) {
   int i = 0;
@@ -428,13 +436,13 @@ int is_extern(char *line) {
   skip_spaces(line, &i);
   get_next_word(line, &i, word);
 
-  return (strcmp(word, ".extern") == 0);
+  return (strcmp(word, ".extern") == STR_MATCH);
 }
 
 /**
  * @brief Checks if a line contains an .entry directive.
  * @param line Input line buffer.
- * @return int 1 if .entry directive, 0 otherwise.
+ * @return int TRUE if .entry directive, FALSE otherwise.
  */
 int is_entry(char *line) {
   int i = 0;
@@ -444,7 +452,7 @@ int is_entry(char *line) {
   skip_spaces(line, &i);
   get_next_word(line, &i, word);
 
-  return (strcmp(word, ".entry") == 0);
+  return (strcmp(word, ".entry") == STR_MATCH);
 }
 
 /* ---- Binary Instruction & Data Encoding ---- */
@@ -455,9 +463,30 @@ int is_entry(char *line) {
  * @return int Register number (0-31), or -1 if malformed.
  */
 static int get_register(const char *token) {
-  if (token[0] != '$')
+  int val;
+  char *endptr;
+  if (!token || token[0] != '$' || token[1] == '\0')
     return -1;
-  return atoi(token + 1);
+  val = (int)strtol(token + 1, &endptr, 10);
+  if (*endptr != '\0' || val < 0 || val > 31)
+    return -1;
+  return val;
+}
+
+/**
+ * @brief Validates 16-bit signed integer immediate value.
+ */
+static int is_valid_immediate(const char *token, long *val_out) {
+  char *endptr;
+  long val;
+  if (!token || token[0] == '\0')
+    return FALSE;
+  val = strtol(token, &endptr, 10);
+  if (*endptr != '\0' || val < -32768 || val > 32767)
+    return FALSE;
+  if (val_out)
+    *val_out = val;
+  return TRUE;
 }
 
 /**
@@ -465,10 +494,102 @@ static int get_register(const char *token) {
  * @param line Input instruction line buffer.
  * @return unsigned int 32-bit encoded R-type machine word.
  */
-static unsigned int encode_r(char *line) {
+/**
+ * @brief Validates comma syntax in an instruction statement.
+ */
+static int validate_comma_syntax(char *line, int expected_ops, int line_number,
+                                 int *error_found) {
+  int i = 0;
+  int comma_count = 0;
+  int token_count = 0;
+  int in_token = 0;
+  int last_was_comma = 0;
+  char word[MAX_LABEL_LENGTH + 1];
+
+  skip_label(line, &i);
+  skip_spaces(line, &i);
+  get_next_word(line, &i, word);
+
+  skip_spaces(line, &i);
+
+  if (expected_ops == 0) {
+    if (line[i] != '\0' && line[i] != '\n' && line[i] != ';') {
+      printf("Error: line %d - extra text after '%s' instruction\n",
+             line_number, word);
+      *error_found = 1;
+      return ERR;
+    }
+    return OK;
+  }
+
+  if (line[i] == ',') {
+    printf("Error: line %d - leading comma before operands in '%s'\n",
+           line_number, word);
+    *error_found = 1;
+    return ERR;
+  }
+
+  while (line[i] != '\0' && line[i] != '\n' && line[i] != ';') {
+    if (line[i] == ' ' || line[i] == '\t' || line[i] == '\r') {
+      in_token = 0;
+      i++;
+      continue;
+    }
+
+    if (line[i] == ',') {
+      if (last_was_comma || token_count == 0) {
+        printf("Error: line %d - invalid or consecutive comma in '%s'\n",
+               line_number, word);
+        *error_found = 1;
+        return ERR;
+      }
+      comma_count++;
+      last_was_comma = 1;
+      in_token = 0;
+      i++;
+      continue;
+    }
+
+    if (!in_token) {
+      if (token_count > 0 && !last_was_comma) {
+        printf("Error: line %d - missing comma between operands in '%s'\n",
+               line_number, word);
+        *error_found = 1;
+        return ERR;
+      }
+      token_count++;
+      in_token = 1;
+      last_was_comma = 0;
+    }
+    i++;
+  }
+
+  if (last_was_comma) {
+    printf("Error: line %d - comma at end of '%s'\n", line_number, word);
+    *error_found = 1;
+    return ERR;
+  }
+
+  if (token_count > 0 && comma_count != token_count - 1) {
+    printf("Error: line %d - comma syntax error in '%s'\n", line_number, word);
+    *error_found = 1;
+    return ERR;
+  }
+
+  return OK;
+}
+
+/**
+ * @brief Encodes an R-type instruction word.
+ * @param line Input instruction line buffer.
+ * @param line_number Line number in source file.
+ * @param error_found Pointer to error flag.
+ * @return unsigned int 32-bit encoded R-type machine word.
+ */
+static unsigned int encode_r(char *line, int line_number, int *error_found) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
-  char op1[10], op2[10], op3[10];
+  char op1[NAME_SIZE], op2[NAME_SIZE], op3[NAME_SIZE];
   int opcode = 0, funct = 0;
   int rs = 0, rt = 0, rd = 0;
   unsigned int code = 0;
@@ -485,23 +606,51 @@ static unsigned int encode_r(char *line) {
     }
   }
 
+  if (validate_comma_syntax(line, (opcode == 1 ? 2 : 3), line_number,
+                            error_found) == ERR)
+    return 0;
+
   skip_spaces(line, &i);
 
   if (opcode == 1) {
     get_next_token(line, &i, op1);
     get_next_token(line, &i, op2);
 
+    if (op1[0] == '\0' || op2[0] == '\0') {
+      printf("Error: line %d - instruction '%s' missing operand\n", line_number,
+             word);
+      *error_found = 1;
+      return 0;
+    }
     rd = get_register(op1);
     rs = get_register(op2);
+    if (rd == -1 || rs == -1) {
+      printf("Error: line %d - instruction '%s' invalid register operand\n",
+             line_number, word);
+      *error_found = 1;
+      return 0;
+    }
     rt = 0;
   } else {
     get_next_token(line, &i, op1);
     get_next_token(line, &i, op2);
     get_next_token(line, &i, op3);
 
+    if (op1[0] == '\0' || op2[0] == '\0' || op3[0] == '\0') {
+      printf("Error: line %d - instruction '%s' missing operand\n", line_number,
+             word);
+      *error_found = 1;
+      return 0;
+    }
     rs = get_register(op1);
     rt = get_register(op2);
     rd = get_register(op3);
+    if (rs == -1 || rt == -1 || rd == -1) {
+      printf("Error: line %d - instruction '%s' invalid register operand\n",
+             line_number, word);
+      *error_found = 1;
+      return 0;
+    }
   }
 
   code |= (unsigned int)(opcode & 0x3F) << 26;
@@ -518,10 +667,14 @@ static unsigned int encode_r(char *line) {
  * @param line Input instruction line buffer.
  * @param IC Current instruction counter address.
  * @param complete Output flag (1 if resolved, 0 if label operand needs Pass 2).
- * @param sym_out Output buffer for missing operand symbol name if complete == 0.
+ * @param sym_out Output buffer for missing operand symbol name if complete ==
+ * 0.
+ * @param line_number Line number in source file.
+ * @param error_found Pointer to error flag.
  * @return unsigned int 32-bit encoded I-type machine word.
  */
-static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out) {
+static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out,
+                             int line_number, int *error_found) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
   char op1[MAX_LABEL_LENGTH + 1];
@@ -546,24 +699,59 @@ static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out) {
     }
   }
 
+  if (validate_comma_syntax(line, 3, line_number, error_found) == ERR)
+    return 0;
+
   is_branch = (opcode >= 15 && opcode <= 18);
 
   get_next_token(line, &i, op1);
   get_next_token(line, &i, op2);
   get_next_token(line, &i, op3);
 
+  if (op1[0] == '\0' || op2[0] == '\0' || op3[0] == '\0') {
+    printf("Error: line %d - instruction '%s' missing operand\n", line_number,
+           word);
+    *error_found = 1;
+    return 0;
+  }
+
   if (is_branch) {
+    if (op3[0] == '$') {
+      printf("Error: line %d - branch instruction '%s' requires label operand, "
+             "register given\n",
+             line_number, word);
+      *error_found = 1;
+      return 0;
+    }
     rs = get_register(op1);
     rt = get_register(op2);
+    if (rs == -1 || rt == -1) {
+      printf(
+          "Error: line %d - branch instruction '%s' invalid register operand\n",
+          line_number, word);
+      *error_found = 1;
+      return 0;
+    }
     immed = 0;
-    *complete = 0;
+    *complete = INCOMPLETE;
     strncpy(sym_out, op3, MAX_LABEL_LENGTH);
     sym_out[MAX_LABEL_LENGTH] = '\0';
   } else {
     rs = get_register(op1);
-    immed = atol(op2);
     rt = get_register(op3);
-    *complete = 1;
+    if (rs == -1 || rt == -1) {
+      printf("Error: line %d - instruction '%s' invalid register operand\n",
+             line_number, word);
+      *error_found = 1;
+      return 0;
+    }
+    if (!is_valid_immediate(op2, &immed)) {
+      printf("Error: line %d - instruction '%s' invalid 16-bit immediate '%s'\n",
+             line_number, word, op2);
+      *error_found = 1;
+      return 0;
+    }
+    *complete = COMPLETE;
     sym_out[0] = '\0';
   }
 
@@ -579,10 +767,14 @@ static unsigned int encode_i(char *line, int IC, int *complete, char *sym_out) {
  * @brief Encodes a J-type instruction word.
  * @param line Input instruction line buffer.
  * @param complete Output flag (1 if resolved, 0 if label operand needs Pass 2).
- * @param sym_out Output buffer for missing operand symbol name if complete == 0.
+ * @param sym_out Output buffer for missing operand symbol name if complete ==
+ * 0.
+ * @param line_number Line number in source file for error reporting.
+ * @param error_found Pointer to error flag in first_pass.
  * @return unsigned int 32-bit encoded J-type machine word.
  */
-static unsigned int encode_j(char *line, int *complete, char *sym_out) {
+static unsigned int encode_j(char *line, int *complete, char *sym_out,
+                             int line_number, int *error_found) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
   char op1[MAX_LABEL_LENGTH + 1];
@@ -601,24 +793,57 @@ static unsigned int encode_j(char *line, int *complete, char *sym_out) {
     }
   }
 
+  if (validate_comma_syntax(line, (opcode == OPCODE_HLT ? 0 : 1), line_number,
+                            error_found) == ERR)
+    return 0;
+
   code |= (unsigned int)(opcode & 0x3F) << 26;
 
-  if (opcode == 63) {
-    *complete = 1;
+  if (opcode == OPCODE_HLT) {
+    skip_spaces(line, &i);
+    if (line[i] != '\0' && line[i] != '\n') {
+      printf("Error: line %d - extraneous text after hlt instruction\n",
+             line_number);
+      *error_found = 1;
+    }
+    *complete = COMPLETE;
     sym_out[0] = '\0';
     return code;
   }
 
   get_next_token(line, &i, op1);
 
+  if (op1[0] == '\0') {
+    printf("Error: line %d - instruction '%s' missing operand\n", line_number,
+           word);
+    *error_found = 1;
+    return 0;
+  }
+
+  if (opcode == 31 || opcode == 32) { /* la, call */
+    if (op1[0] == '$') {
+      printf("Error: line %d - instruction '%s' requires label operand, "
+             "register given\n",
+             line_number, word);
+      *error_found = 1;
+      return 0;
+    }
+  }
+
   if (op1[0] == '$') {
     reg = get_register(op1);
+    if (reg == -1) {
+      printf("Error: line %d - instruction '%s' invalid register operand\n",
+             line_number, word);
+      *error_found = 1;
+      return 0;
+    }
     code |= (unsigned int)(1) << 25;
     code |= (unsigned int)(reg) & 0x1F;
-    *complete = 1;
+    *complete = COMPLETE;
     sym_out[0] = '\0';
   } else {
-    *complete = 0;
+    *complete = INCOMPLETE;
     strncpy(sym_out, op1, MAX_LABEL_LENGTH);
     sym_out[MAX_LABEL_LENGTH] = '\0';
   }
@@ -630,12 +855,16 @@ static unsigned int encode_j(char *line, int *complete, char *sym_out) {
  * @brief Encodes an instruction statement (R, I, or J type).
  * @param line Input line buffer.
  * @param IC Current instruction counter address.
- * @param complete Output flag set to 1 if fully encoded, 0 if target symbol pending.
+ * @param complete Output flag set to 1 if fully encoded, 0 if target symbol
+ * pending.
  * @param sym_out Output buffer to store target symbol name if complete == 0.
+ * @param line_number Line number in source file for error reporting.
+ * @param error_found Pointer to error flag in first_pass.
  * @return unsigned int 32-bit encoded machine code word.
  */
 static unsigned int encode_instruction(char *line, int IC, int *complete,
-                                       char *sym_out) {
+                                       char *sym_out, int line_number,
+                                       int *error_found) {
   int i = 0, j = 0;
   char word[MAX_LABEL_LENGTH + 1];
 
@@ -645,33 +874,39 @@ static unsigned int encode_instruction(char *line, int IC, int *complete,
 
   for (j = 0; r_instructions[j].name[0] != '\0'; j++)
     if (strcmp(r_instructions[j].name, word) == 0) {
-      *complete = 1;
+      *complete = COMPLETE;
       sym_out[0] = '\0';
-      return encode_r(line);
+      return encode_r(line, line_number, error_found);
     }
 
   for (j = 0; i_instructions[j].name[0] != '\0'; j++)
     if (strcmp(i_instructions[j].name, word) == 0)
-      return encode_i(line, IC, complete, sym_out);
+      return encode_i(line, IC, complete, sym_out, line_number, error_found);
 
   for (j = 0; j_instructions[j].name[0] != '\0'; j++)
     if (strcmp(j_instructions[j].name, word) == 0)
-      return encode_j(line, complete, sym_out);
+      return encode_j(line, complete, sym_out, line_number, error_found);
 
-  *complete = 0;
+  *complete = INCOMPLETE;
   sym_out[0] = '\0';
   return 0;
 }
 
 /**
- * @brief Encodes data directive arguments (.db, .dh, .dw, .asciz) into data_image.
+ * @brief Encodes data directive arguments (.db, .dh, .dw, .asciz) into
+ * data_image.
  * @param line Input line buffer.
  * @param DC Pointer to current data counter address.
  */
-static void encode_data(char *line, int *DC) {
+static void encode_data(char *line, int *DC, int line_number, int *error_found) {
   int i = 0;
+  int bytes = 1;
+  int k = 0;
+  int b = 0;
+  long val = 0;
   char directive[MAX_LABEL_LENGTH + 1];
   char token[MAX_LINE_LENGTH];
+  char *endptr = NULL;
 
   skip_label(line, &i);
   skip_spaces(line, &i);
@@ -679,46 +914,60 @@ static void encode_data(char *line, int *DC) {
   skip_spaces(line, &i);
 
   if (strcmp(directive, ".asciz") == 0) {
-    if (line[i] == '"')
-      i++;
+    if (line[i] != '"') {
+      printf("Error: line %d - missing opening quote in .asciz directive\n", line_number);
+      *error_found = 1;
+      return;
+    }
+    i++;
     while (line[i] != '\0' && line[i] != '"') {
       add_to_data_image(*DC, (unsigned char)line[i]);
       (*DC)++;
       i++;
     }
+    if (line[i] != '"') {
+      printf("Error: line %d - missing closing quote in .asciz directive\n", line_number);
+      *error_found = 1;
+      return;
+    }
+    i++;
     add_to_data_image(*DC, 0);
     (*DC)++;
   } else {
-    int bytes = 1;
+    bytes = 1;
     if (strcmp(directive, ".dh") == 0)
       bytes = 2;
     if (strcmp(directive, ".dw") == 0)
       bytes = 4;
 
-    while (line[i] != '\0') {
-      int k = 0;
-      long val;
+    while (line[i] != '\0' && line[i] != '\n') {
+      k = 0;
 
       skip_spaces(line, &i);
-      while (line[i] != '\0' && line[i] != ',' && line[i] != ' ' &&
-             line[i] != '\t')
+      if (line[i] == '\0' || line[i] == '\n')
+        break;
+
+      while (line[i] != '\0' && line[i] != ',' && line[i] != ' ' && line[i] != '\t' && line[i] != '\n')
         token[k++] = line[i++];
       token[k] = '\0';
 
       if (k == 0)
         break;
 
-      val = atol(token);
-
-      {
-        int b;
-        for (b = 0; b < bytes; b++) {
-          add_to_data_image(*DC, (unsigned char)(val & 0xFF));
-          (*DC)++;
-          val >>= 8;
-        }
+      val = strtol(token, &endptr, 10);
+      if (*endptr != '\0') {
+        printf("Error: line %d - invalid numeric argument '%s' in data directive\n", line_number, token);
+        *error_found = 1;
+        return;
       }
 
+      for (b = 0; b < bytes; b++) {
+        add_to_data_image(*DC, (unsigned char)(val & 0xFF));
+        (*DC)++;
+        val >>= 8;
+      }
+
+      skip_spaces(line, &i);
       if (line[i] == ',')
         i++;
     }
@@ -738,10 +987,19 @@ int first_pass(char *filename) {
   char line[MAX_LINE_LENGTH];
   char file_name[MAX_LINE_LENGTH];
   char label[MAX_LABEL_LENGTH + 1];
+  char word[MAX_LABEL_LENGTH + 1];
+  char sym[MAX_LABEL_LENGTH + 1];
   int IC = STARTING_ADDRESS;
   int DC = 0;
   int line_number = 0;
   int error_found = 0;
+  int complete = COMPLETE;
+  int idx = 0;
+  int i = 0;
+  unsigned int code = 0;
+  Symbol *existing_sym = NULL;
+  EntryNode *existing_ent = NULL;
+  Symbol *cur = NULL;
 
   /* -------- Step 1: Open Expanded Assembly File (.am) -------- */
   filename = strtok(filename, ".");
@@ -750,7 +1008,7 @@ int first_pass(char *filename) {
   fp = fopen(file_name, "r");
   if (!fp) {
     printf("Error: cannot open file %s\n", file_name);
-    return 1;
+    return ERR;
   }
 
   /* -------- Step 2: Line-by-Line Parsing & Symbol Collection -------- */
@@ -763,7 +1021,7 @@ int first_pass(char *filename) {
 
     /* Step 2.1: Label Declaration Detection & Validation */
     if (is_label(line, label)) {
-      Symbol *existing_sym = find_symbol(label);
+      existing_sym = find_symbol(label);
       if (existing_sym) {
         if (existing_sym->type == SYM_EXTERN) {
           printf("Error: line %d - label '%s' was declared as .extern and "
@@ -782,37 +1040,35 @@ int first_pass(char *filename) {
 
     /* Step 2.2: Line Statement Encoding */
     if (is_instruction(line)) {
-      int complete = 1;
-      char sym[MAX_LABEL_LENGTH + 1];
-      unsigned int code = encode_instruction(line, IC, &complete, sym);
+      complete = COMPLETE;
+      code = encode_instruction(line, IC, &complete, sym, line_number,
+                                &error_found);
 
       add_to_code_image(IC, code, complete, complete ? NULL : sym);
       IC += 4;
     } else if (is_data_directive(line)) {
-      encode_data(line, &DC);
+      encode_data(line, &DC, line_number, &error_found);
     } else if (is_extern(line)) {
-      int i = 0;
-      char word[MAX_LABEL_LENGTH + 1];
-      char sym[MAX_LABEL_LENGTH + 1];
+      idx = 0;
 
-      skip_label(line, &i);
-      skip_spaces(line, &i);
-      get_next_word(line, &i, word);
-      skip_spaces(line, &i);
-      get_next_word(line, &i, sym);
+      skip_label(line, &idx);
+      skip_spaces(line, &idx);
+      get_next_word(line, &idx, word);
+      skip_spaces(line, &idx);
+      get_next_word(line, &idx, sym);
 
       if (sym[0] == '\0') {
         printf("Error: line %d - missing label after .extern\n", line_number);
         error_found = 1;
       } else {
-        skip_spaces(line, &i);
-        if (line[i] != '\0' && line[i] != '\n') {
+        skip_spaces(line, &idx);
+        if (line[idx] != '\0' && line[idx] != '\n') {
           printf("Error: line %d - extraneous text after .extern directive\n",
                  line_number);
           error_found = 1;
         } else {
-          Symbol *existing_sym = find_symbol(sym);
-          EntryNode *existing_ent = find_entry(sym);
+          existing_sym = find_symbol(sym);
+          existing_ent = find_entry(sym);
 
           if (existing_sym && existing_sym->type != SYM_EXTERN) {
             printf("Error: line %d - label '%s' is defined locally and cannot "
@@ -830,27 +1086,25 @@ int first_pass(char *filename) {
         }
       }
     } else if (is_entry(line)) {
-      int i = 0;
-      char word[MAX_LABEL_LENGTH + 1];
-      char sym[MAX_LABEL_LENGTH + 1];
+      idx = 0;
 
-      skip_label(line, &i);
-      skip_spaces(line, &i);
-      get_next_word(line, &i, word);
-      skip_spaces(line, &i);
-      get_next_word(line, &i, sym);
+      skip_label(line, &idx);
+      skip_spaces(line, &idx);
+      get_next_word(line, &idx, word);
+      skip_spaces(line, &idx);
+      get_next_word(line, &idx, sym);
 
       if (sym[0] == '\0') {
         printf("Error: line %d - missing label after .entry\n", line_number);
         error_found = 1;
       } else {
-        skip_spaces(line, &i);
-        if (line[i] != '\0' && line[i] != '\n') {
+        skip_spaces(line, &idx);
+        if (line[idx] != '\0' && line[idx] != '\n') {
           printf("Error: line %d - extraneous text after .entry directive\n",
                  line_number);
           error_found = 1;
         } else {
-          Symbol *existing_sym = find_symbol(sym);
+          existing_sym = find_symbol(sym);
 
           if (existing_sym && existing_sym->type == SYM_EXTERN) {
             printf("Error: line %d - label '%s' cannot be both .entry and "
@@ -871,36 +1125,32 @@ int first_pass(char *filename) {
   fclose(fp);
 
   if (error_found)
-    return 1;
+    return ERR;
 
   /* -------- Step 3: Compute Final Memory Offsets -------- */
   ICF = IC;
   DCF = DC;
 
   /* Step 3.1: Adjust Data Symbol Addresses by Adding ICF */
-  {
-    Symbol *cur = symbol_table;
-    while (cur) {
-      if (cur->type == SYM_DATA)
-        cur->value += ICF;
-      cur = cur->next;
-    }
+  cur = symbol_table;
+  while (cur) {
+    if (cur->type == SYM_DATA)
+      cur->value += ICF;
+    cur = cur->next;
   }
 
   /* Step 3.2: Adjust Data Image Byte Addresses by Adding ICF */
-  {
-    int i;
-    for (i = 0; i < data_size; i++)
-      data_image[i].address += ICF;
-  }
+  for (i = 0; i < data_size; i++)
+    data_image[i].address += ICF;
 
-  return 0;
+  return OK;
 }
 
 /* ---- Memory Cleanup ---- */
 
 /**
- * @brief Resets and frees all global memory allocations after processing a file.
+ * @brief Resets and frees all global memory allocations after processing a
+ * file.
  */
 void free_assembler_memory(void) {
   if (code_image) {

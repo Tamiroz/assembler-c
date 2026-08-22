@@ -2,7 +2,8 @@
  * @file second_pass.c
  * @brief second pass implementation
  *
- * scans code image array, looks up missing labels in symbol table and completes machine code words
+ * scans code image array, looks up missing labels in symbol table and completes
+ * machine code words
  */
 
 #include "second_pass.h"
@@ -23,17 +24,19 @@ void add_extern(const char *name, int address);
  */
 int second_pass(const char *filename) {
   int i;
+  int opcode;
+  int offset;
   Symbol *sym_found;
   EntryNode *ent_found = entry_list;
 
   /* -------- Step 1: fill missing symbol addresses in code image -------- */
   for (i = 0; i < code_size; i++) {
-    if (code_image[i].complete == 0) {
+    if (code_image[i].complete == INCOMPLETE) {
       sym_found = find_symbol(code_image[i].symbol);
       if (sym_found == NULL) {
         printf("Error: address %d - undefined label '%s'\n",
                code_image[i].address, code_image[i].symbol);
-        return 1;
+        return ERR;
       }
 
       /* check if symbol is extern, add to extern list */
@@ -41,28 +44,35 @@ int second_pass(const char *filename) {
         add_extern(sym_found->name, code_image[i].address);
       }
 
-      /* add symbol value to instruction code word */
-      code_image[i].code = code_image[i].code | sym_found->value;
-      code_image[i].complete = 1;
+      /* calculate value: relative offset for branch instructions, absolute address for others */
+      opcode = (code_image[i].code >> 26) & 0x3F;
+      if (opcode >= 15 && opcode <= 18) {
+        offset = sym_found->value - code_image[i].address;
+        code_image[i].code = code_image[i].code | ((short)offset & 0xFFFF);
+      } else {
+        code_image[i].code = code_image[i].code | sym_found->value;
+      }
+      code_image[i].complete = COMPLETE;
     }
   }
 
-  /* -------- Step 2: check entry labels are defined and get their addresses -------- */
+  /* -------- Step 2: check entry labels are defined and get their addresses
+   * -------- */
   while (ent_found != NULL) {
     sym_found = find_symbol(ent_found->symbol);
     if (sym_found == NULL) {
       printf("Error: line %d - entry label '%s' is not defined\n",
              ent_found->line_number, ent_found->symbol);
-      return 1;
+      return ERR;
     }
     if (sym_found->type == SYM_EXTERN) {
       printf("Error: line %d - label '%s' cannot be both .entry and .extern\n",
              ent_found->line_number, ent_found->symbol);
-      return 1;
+      return ERR;
     }
     ent_found->address = sym_found->value;
     ent_found = ent_found->next;
   }
 
-  return 0;
+  return OK;
 }

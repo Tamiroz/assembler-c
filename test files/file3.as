@@ -7,7 +7,8 @@ MAIN: add $3,$5,$9
 mcro GEN_MC
 LOOP: ori $9,-5,$2
  la val1
- mcroend
+mcroend
+GEN_MC
  mcro GEN_MCR2
  jmp NEXT
  mcroend
